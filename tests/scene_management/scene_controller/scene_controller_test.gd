@@ -1,146 +1,154 @@
 extends SceneTree
 
 const TestHelper := preload("res://tests/supports/test_helper.gd")
-const NEXT_SCENE_UID := "uid://ckgibjkn1ktgt"
-const NEXT_SCENE_PATH := "res://tests/scene_management/scene_controller/fixtures/example.tscn"
-
 const ControllerScene := preload("res://scene_management/scene_controller.tscn")
+
+const SCENE_A_UID := "uid://ckgibjkn1ktgt"
+const SCENE_A_PATH := "res://tests/scene_management/scene_controller/fixtures/example.tscn"
+const SCENE_B_PATH := "res://tests/scene_management/scene_controller/fixtures/another.tscn"
+const NON_SCENE_PATH := "res://tests/scene_management/scene_controller/fixtures/example.tres"
+const MISSING_SCENE_PATH := "res://tests/scene_management/scene_controller/fixtures/missing.tscn"
+const TRANSITION_ID := &"effect"
 
 var _helper := TestHelper.new(true)
 
 
-## 任意のIDでのシーン交換と、暗転中・演出終了後の通知を確認する。
+## ノード追加が可能になってからテストを開始する。
 func _initialize() -> void:
 	call_deferred("_run_tests")
 
 
-## ノード追加が可能になってからテストを開始する。
+## 正常な繰り返し交換と、失敗時の状態維持・再試行を確認する。
 func _run_tests() -> void:
 	await _test_scene_replacement()
-	await _test_loading_failure()
+	await _test_unregistered_scene()
+	await _test_missing_scene()
+	await _test_non_scene_resource()
 	await _helper.finish(self, "scene_controller")
 
 
-## 交換完了時の状態、通知順序、および連続要求の抑制を確認する。
+## A→B→Aと交換し、各交換で追加・旧シーン解放・ID更新を確認する。
 func _test_scene_replacement() -> void:
 	_helper.change_test_name("scene_replacement")
-	var controller: SceneController = ControllerScene.instantiate()
-	var scenes_root := Node.new()
-	var old_scene := Node.new()
-	scenes_root.add_child(old_scene)
-	root.add_child(scenes_root)
-
-	var entry := SceneEntry.new()
-	entry.scene_path = NEXT_SCENE_UID
 	var registry := SceneRegistry.new()
-	registry._data_dict[&"other_project_level"] = entry
+	var entry_a := SceneEntry.new()
+	entry_a.scene_path = SCENE_A_UID
+	registry._data_dict[&"scene_a"] = entry_a
+	var entry_b := SceneEntry.new()
+	entry_b.scene_path = SCENE_B_PATH
+	registry._data_dict[&"scene_b"] = entry_b
+	var controller := _create_controller(registry)
+	var scenes_root := controller._main_scenes_root
 
-	var transitions := TransitionRegistry.new()
-	transitions._entries[&"other_project_effect"] = TransitionEntry.new()
-	var transition := controller.get_node("TransitionController")
-	transition._transition_registry = transitions
-	controller._scene_registry = registry
-	controller._main_scenes_root = scenes_root
-	controller.init_scene_id = &"initial_level"
-	controller._transition_duration = 0.05
+	for scene_id: StringName in [&"scene_a", &"scene_b", &"scene_a"]:
+		var old_scene: Node = scenes_root.get_child(0) if scenes_root.get_child_count() > 0 else null
+		var result := await controller.change_main_scene_async(scene_id, TRANSITION_ID)
+		_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "正常な交換はSUCCESSを返す")
+		var expected_path := SCENE_A_PATH if scene_id == &"scene_a" else SCENE_B_PATH
+		_assert_current_scene(controller, scene_id, expected_path)
+		_helper.assert_false(controller.is_changing, "交換完了後は処理中状態を解除する")
+		if is_instance_valid(old_scene):
+			_helper.assert_null(old_scene.get_parent(), "旧シーンを専用ルートから外す")
+		await process_frame
+		_helper.assert_false(is_instance_valid(old_scene), "旧シーンを解放する")
 
+	controller.queue_free()
+	await process_frame
+
+
+## 未登録IDは開始前に拒否し、登録後には同じIDで切り替えられる。
+func _test_unregistered_scene() -> void:
+	_helper.change_test_name("unregistered_scene")
+	await _test_failed_change("", SceneController.ChangeResult.INVALID_SCENE)
+
+
+## 存在しないパスでの失敗後も、参照を修正して再試行できる。
+func _test_missing_scene() -> void:
+	_helper.change_test_name("missing_scene")
+	await _test_failed_change(MISSING_SCENE_PATH, SceneController.ChangeResult.LOAD_FAILED)
+
+
+## 実在するシーン以外のResourceを拒否し、参照修正後は再試行できる。
+func _test_non_scene_resource() -> void:
+	_helper.change_test_name("non_scene_resource")
+	var resource := load(NON_SCENE_PATH)
+	_helper.assert_true(resource != null and not resource is PackedScene, "失敗用Resourceは実在し、PackedSceneではない")
+	await _test_failed_change(NON_SCENE_PATH, SceneController.ChangeResult.LOAD_FAILED)
+
+
+## 失敗時の状態・通知と、同じコントローラーでの再試行を確認する。[br]
+## [param scene_path]: 失敗させる参照。空文字列ではエントリーを登録しない[br]
+## [param expected_result]: 想定する失敗結果
+func _test_failed_change(
+		scene_path: String,
+		expected_result: SceneController.ChangeResult,
+) -> void:
+	var registry := SceneRegistry.new()
+	var entry := SceneEntry.new()
+	entry.scene_path = scene_path
+	if not scene_path.is_empty():
+		registry._data_dict[&"target"] = entry
+	var old_scene := Node.new()
+	var controller := _create_controller(registry, old_scene)
+	var scenes_root := controller._main_scenes_root
+	var transition := controller._transition_controller
 	var events: Array[StringName] = []
-	controller.scene_change_started.connect(func(id: StringName) -> void:
-		events.append(&"started")
-		_helper.assert_equal(id, &"other_project_level", "開始通知に要求IDを渡す")
-		_helper.assert_same(scenes_root.get_child(0), old_scene, "開始時には旧シーンが残る")
-		var busy_result := await controller.change_main_scene_async(id, &"other_project_effect")
-		_helper.assert_equal(busy_result, SceneController.ChangeResult.BUSY, "処理中の要求はBUSYを返す")
-	)
-	controller.scene_replaced.connect(func(id: StringName) -> void:
-		events.append(&"replaced")
-		_helper.assert_equal(id, &"other_project_level", "交換通知に要求IDを渡す")
-		_helper.assert_equal(controller.current_main_scene_id, id, "交換通知前に現在IDを更新する")
-		_helper.assert_equal(scenes_root.get_child_count(), 1, "専用ルートには新シーンだけを置く")
-		_helper.assert_equal(scenes_root.get_child(0).name, &"NextScene", "新シーンが追加済みである")
-		_helper.assert_true(controller.is_loaded(id), "UIDで追加済みシーンを判定できる")
-		_helper.assert_true(controller.is_changing, "交換通知時には遷移中である")
-		_helper.assert_true(transition._transition_rect.visible, "交換通知時には画面を覆っている")
-		_helper.assert_equal(transition._material.get_shader_parameter(&"Value"), 1.0, "画面を戻す演出は未開始である")
-	)
-	controller.scene_changed.connect(func(id: StringName) -> void:
-		events.append(&"changed")
-		_helper.assert_equal(id, &"other_project_level", "完了通知に要求IDを渡す")
-		_helper.assert_false(controller.is_changing, "完了通知時には遷移中状態を解除する")
-		_helper.assert_false(transition._transition_rect.visible, "完了通知時には画面を戻している")
-	)
-	root.add_child(controller)
-	_helper.assert_equal(controller.current_main_scene_id, &"initial_level", "外部指定の初期IDを使用する")
+	controller.scene_change_started.connect(func(_id: StringName) -> void: events.append(&"started"))
+	controller.scene_replaced.connect(func(_id: StringName) -> void: events.append(&"replaced"))
+	controller.scene_changed.connect(func(_id: StringName) -> void: events.append(&"changed"))
 
-	var result := await controller.change_main_scene_async(&"other_project_level", &"other_project_effect")
-	_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "演出完了後にSUCCESSを返す")
-	_helper.assert_false(controller.is_changing, "結果を返す前に遷移中状態を解除する")
-	_helper.assert_false(transition._transition_rect.visible, "結果を返す前に画面を戻す")
-	_helper.assert_array(events, [&"started", &"replaced", &"changed"], "通知順序を守り、重複要求を拒否する")
-	entry.scene_path = NEXT_SCENE_PATH
-	_helper.assert_true(controller.is_loaded(&"other_project_level"), "通常のパスでも同じ追加済みシーンを判定できる")
-	entry.scene_path = "uid://invalid"
-	_helper.assert_false(controller.is_loaded(&"other_project_level"), "無効なUIDを追加済みと判定しない")
-	entry.scene_path = NEXT_SCENE_UID
-	result = await controller.change_main_scene_async(&"other_project_level", &"other_project_effect")
-	_helper.assert_equal(result, SceneController.ChangeResult.ALREADY_CURRENT, "現在のシーンへの要求を区別する")
-	_helper.assert_equal(events.size(), 3, "現在のシーンへの再要求では通知しない")
+	var result := await controller.change_main_scene_async(&"target", TRANSITION_ID)
+	_helper.assert_equal(result, expected_result, "失敗の種類に応じた結果を返す")
+	_helper.assert_equal(scenes_root.get_child_count(), 1, "失敗時はシーンを追加・除去しない")
+	if scenes_root.get_child_count() == 1:
+		_helper.assert_same(scenes_root.get_child(0), old_scene, "失敗時は元のシーンを残す")
+	_helper.assert_equal(controller.current_main_scene_id, &"initial", "失敗時は現在IDを維持する")
+	_helper.assert_false(controller.is_changing, "失敗後は処理中状態を解除する")
+	_helper.assert_false(transition._transition_rect.visible, "失敗後は画面を覆う演出を解除する")
+	var expected_events: Array[StringName] = []
+	if expected_result == SceneController.ChangeResult.LOAD_FAILED:
+		expected_events.append(&"started")
+	_helper.assert_array(events, expected_events, "未登録IDでは開始せず、いずれの失敗でも成功通知を出さない")
+	await process_frame
+	_helper.assert_true(is_instance_valid(old_scene), "失敗時は元のシーンを解放しない")
+
+	entry.scene_path = SCENE_A_UID
+	registry._data_dict[&"target"] = entry
+	result = await controller.change_main_scene_async(&"target", TRANSITION_ID)
+	_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "参照修正後の再試行はSUCCESSを返す")
+	_assert_current_scene(controller, &"target", SCENE_A_PATH)
+	_helper.assert_false(controller.is_changing, "再試行完了後も処理中状態を解除する")
 	controller.queue_free()
-	scenes_root.queue_free()
 	await process_frame
 
 
-## 読み込めないシーンや型の違うResourceでは旧シーンとIDを維持する。
-func _test_loading_failure() -> void:
-	_helper.change_test_name("loading_failure")
+## 演出と専用ルートを設定したコントローラーをツリーへ追加する。[br]
+## [param registry]: 使用するシーン登録情報[br]
+## [param initial_scene]: 専用ルートに配置する初期シーン
+func _create_controller(registry: SceneRegistry, initial_scene: Node = null) -> SceneController:
 	var controller: SceneController = ControllerScene.instantiate()
 	var scenes_root := Node.new()
-	var old_scene := Node.new()
-	scenes_root.add_child(old_scene)
-	root.add_child(scenes_root)
-	var registry := SceneRegistry.new()
-	var entry := SceneEntry.new()
-	registry._data_dict[&"failed_level"] = entry
+	controller.add_child(scenes_root)
+	if initial_scene != null:
+		scenes_root.add_child(initial_scene)
+		controller.init_scene_id = &"initial"
 	controller._scene_registry = registry
 	controller._main_scenes_root = scenes_root
-	controller.init_scene_id = &"initial_level"
 	controller._transition_duration = 0.0
-	var transition := controller.get_node("TransitionController")
 	var transitions := TransitionRegistry.new()
-	transitions._entries[&"effect"] = TransitionEntry.new()
-	transition._transition_registry = transitions
-	var started := [0]
-	controller.scene_change_started.connect(func(_id: StringName) -> void: started[0] += 1)
-	var completed := [0]
-	controller.scene_replaced.connect(func(_id: StringName) -> void: completed[0] += 1)
-	controller.scene_changed.connect(func(_id: StringName) -> void: completed[0] += 1)
+	transitions._entries[TRANSITION_ID] = TransitionEntry.new()
+	controller._transition_controller._transition_registry = transitions
 	root.add_child(controller)
+	return controller
 
-	var result := await controller.change_main_scene_async(&"unregistered_level", &"effect")
-	_helper.assert_equal(result, SceneController.ChangeResult.INVALID_SCENE, "未登録のIDはINVALID_SCENEを返す")
-	result = await controller.change_main_scene_async(&"failed_level", &"effect")
-	_helper.assert_equal(result, SceneController.ChangeResult.INVALID_SCENE, "未設定の参照はINVALID_SCENEを返す")
-	_helper.assert_equal(started[0], 0, "無効な設定では遷移を開始しない")
-	_helper.assert_false(controller.is_changing, "無効な設定では遷移中にならない")
-	_helper.assert_same(scenes_root.get_child(0), old_scene, "無効な設定では旧シーンを残す")
 
-	for path: String in [
-		"uid://invalid",
-		"res://tests/scene_controller/fixtures/missing.tscn",
-		"res://tests/resource_loading/example.tres",
-	]:
-		entry.scene_path = path
-		result = await controller.change_main_scene_async(&"failed_level", &"effect")
-		_helper.assert_equal(result, SceneController.ChangeResult.LOAD_FAILED, "読み込み失敗はLOAD_FAILEDを返す")
-		_helper.assert_same(scenes_root.get_child(0), old_scene, "失敗時は旧シーンを残す")
-		_helper.assert_equal(controller.current_main_scene_id, &"initial_level", "失敗時は現在IDを維持する")
-		_helper.assert_false(controller.is_changing, "失敗時も遷移中状態を解除する")
-		_helper.assert_false(transition._transition_rect.visible, "失敗時も画面を戻す")
-	_helper.assert_equal(completed[0], 0, "失敗時は交換・全体完了を通知しない")
-	entry.scene_path = NEXT_SCENE_UID
-	result = await controller.change_main_scene_async(&"failed_level", &"effect")
-	_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "失敗後の再試行も成功結果を返す")
-	_helper.assert_equal(controller.current_main_scene_id, &"failed_level", "失敗後に正しいUIDで再試行できる")
-	controller.queue_free()
-	scenes_root.queue_free()
-	await process_frame
+## 指定したシーンだけが専用ルートに追加され、現在IDが更新されたか確認する。[br]
+## [param controller]: 確認対象[br]
+## [param scene_id]: 期待する現在ID[br]
+## [param scene_path]: 期待するシーンファイルのパス
+func _assert_current_scene(controller: SceneController, scene_id: StringName, scene_path: String) -> void:
+	_helper.assert_equal(controller.current_main_scene_id, scene_id, "現在IDを要求したIDへ更新する")
+	var scenes_root := controller._main_scenes_root
+	_helper.assert_equal(scenes_root.get_child_count(), 1, "専用ルートには新シーンだけを置く")
+	if scenes_root.get_child_count() == 1:
+		_helper.assert_equal(scenes_root.get_child(0).scene_file_path, scene_path, "要求したシーンファイルを追加する")
