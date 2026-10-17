@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cjpno3mma0auk"]
 
-[ext_resource type="Material" uid="uid://dn8sk6cmqrefb" path="res://addons/scene_management/transition_management/assets/transition.tres" id="1_23l5u"]
-[ext_resource type="Script" uid="uid://h4y2k73uxths" path="res://addons/scene_management/transition_management/transition_controller.gd" id="1_jfpap"]
+[ext_resource type="Material" uid="uid://dn8sk6cmqrefb" path="res://scene_management/transition_management/assets/transition.tres" id="1_23l5u"]
+[ext_resource type="Script" uid="uid://h4y2k73uxths" path="res://scene_management/transition_management/transition_controller.gd" id="1_jfpap"]
 
 [node name="TransitionController" type="CanvasLayer" unique_id=1857992624 node_paths=PackedStringArray("_transition_rect")]
 script = ExtResource("1_jfpap")

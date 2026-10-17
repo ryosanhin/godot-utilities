@@ -21,10 +21,6 @@ window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/async_resource_loading/plugin.cfg", "res://addons/scene_management/plugin.cfg")
-
 [physics]
 
 3d/physics_engine="Jolt Physics"
