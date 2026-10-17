@@ -6,8 +6,7 @@ signal completed
 
 enum ErrorCode {
 	OK,
-	EMPTY_PATH,
-	RESOURCE_NOT_FOUND,
+	INVALID_REFERENCE,
 	REQUEST_FAILED,
 	LOAD_FAILED,
 	INVALID_REQUEST,
@@ -73,10 +72,8 @@ func format_error() -> String:
 	match error_code:
 		ErrorCode.OK:
 			return ""
-		ErrorCode.EMPTY_PATH:
-			return "リソースのUIDまたはパスが指定されていません。"
-		ErrorCode.RESOURCE_NOT_FOUND:
-			return "リソースが存在しません: %s" % resource_reference
+		ErrorCode.INVALID_REFERENCE:
+			return 'リソース参照が無効、またはリソースが存在しません: "%s"' % resource_reference
 		ErrorCode.REQUEST_FAILED:
 			return "読み込み要求に失敗しました: %s (%s)" % [resource_reference, request_error]
 		ErrorCode.LOAD_FAILED:
@@ -97,13 +94,8 @@ func _load_resource_async(
 	type_hint: String,
 	check_requested: Signal
 ) -> void:
-	if resource_reference.is_empty():
-		error_code = ErrorCode.EMPTY_PATH
-		_complete()
-		return
-
 	if path.is_empty() or not ResourceLoader.exists(path):
-		error_code = ErrorCode.RESOURCE_NOT_FOUND
+		error_code = ErrorCode.INVALID_REFERENCE
 		_complete()
 		return
 
