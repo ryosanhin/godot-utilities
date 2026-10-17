@@ -32,10 +32,10 @@ func _test_scene_replacement() -> void:
 	_helper.change_test_name("scene_replacement")
 	var registry := SceneRegistry.new()
 	var entry_a := SceneEntry.new()
-	entry_a.scene_path = SCENE_A_UID
+	entry_a.scene_reference = SCENE_A_UID
 	registry._data_dict[&"scene_a"] = entry_a
 	var entry_b := SceneEntry.new()
-	entry_b.scene_path = SCENE_B_PATH
+	entry_b.scene_reference = SCENE_B_PATH
 	registry._data_dict[&"scene_b"] = entry_b
 	var controller := _create_controller(registry)
 	var scenes_root := controller._main_scenes_root
@@ -85,7 +85,7 @@ func _test_failed_change(
 ) -> void:
 	var registry := SceneRegistry.new()
 	var entry := SceneEntry.new()
-	entry.scene_path = scene_path
+	entry.scene_reference = scene_path
 	if not scene_path.is_empty():
 		registry._data_dict[&"target"] = entry
 	var old_scene := Node.new()
@@ -112,7 +112,7 @@ func _test_failed_change(
 	await process_frame
 	_helper.assert_true(is_instance_valid(old_scene), "失敗時は元のシーンを解放しない")
 
-	entry.scene_path = SCENE_A_UID
+	entry.scene_reference = SCENE_A_UID
 	registry._data_dict[&"target"] = entry
 	result = await controller.change_main_scene_async(&"target", TRANSITION_ID)
 	_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "参照修正後の再試行はSUCCESSを返す")

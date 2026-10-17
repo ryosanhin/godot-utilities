@@ -49,10 +49,10 @@ func _ready() -> void:
 func is_loaded(scene_id: StringName) -> bool:
 	var entry := _scene_registry.get_scene_data(scene_id)
 
-	if entry == null or entry.scene_path.is_empty():
+	if entry == null or entry.scene_reference.is_empty():
 		return false
 
-	var scene_path := AsyncResourceLoader.resolve_resource_path(entry.scene_path)
+	var scene_path := AsyncResourceLoader.resolve_resource_path(entry.scene_reference)
 	if scene_path.is_empty():
 		return false
 
@@ -119,7 +119,7 @@ func _resolve_scene_entry(scene_id: StringName) -> SceneEntry:
 	if entry == null:
 		return null
 
-	if entry.scene_path.is_empty():
+	if entry.scene_reference.is_empty():
 		push_error("切り替え先のシーンのUIDまたはパスが設定されていません")
 		return null
 
@@ -130,7 +130,7 @@ func _resolve_scene_entry(scene_id: StringName) -> SceneEntry:
 ## [param entry]: 切り替え先のシーンのUIDまたはパスを持つエントリー
 func _instantiate_scene(entry: SceneEntry) -> Node:
 	var request := AsyncResourceLoader.new(
-			entry.scene_path,
+			entry.scene_reference,
 			get_tree().process_frame,
 			"PackedScene",
 	)
@@ -142,7 +142,7 @@ func _instantiate_scene(entry: SceneEntry) -> Node:
 
 	var packed_scene := request.resource as PackedScene
 	if packed_scene == null:
-		push_error("切り替え先のPackedSceneを読み込めませんでした: %s" % entry.scene_path)
+		push_error("切り替え先のPackedSceneを読み込めませんでした: %s" % entry.scene_reference)
 		return null
 
 	var next_scene := packed_scene.instantiate()
