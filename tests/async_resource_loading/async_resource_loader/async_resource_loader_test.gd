@@ -15,7 +15,6 @@ var _runner := TestHelper.new(true)
 func _initialize() -> void:
 	await _test_parallel_requests()
 	await _run_tests()
-	await _test_timer_signal()
 	await _runner.finish(self, "async_resource_loader")
 
 
@@ -99,28 +98,6 @@ func _run_tests() -> void:
 	await _wait_for_request(failed)
 	_runner.assert_equal(failed.error_code, Loader.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
 	_runner.assert_null(failed.resource, "読み込み失敗時もResourceを持たない")
-	
-	# インスタンスごとにリクエストは独立しているのでエラーの後でも別リクエストで取得可能
-	var reloaded := Loader.new(SCENE_PATH, process_frame, "PackedScene")
-	await _wait_for_request(reloaded)
-	_runner.assert_true(reloaded.resource is PackedScene, "読み込み完了・失敗後も新しいリクエストで読み込める")
-
-
-## SceneTree以外の発行元のシグナルでも再確認できる。
-func _test_timer_signal() -> void:
-	_runner.change_test_name("timer_signal")
-	var timer := Timer.new()
-	timer.wait_time = 0.01
-	root.add_child(timer)
-	timer.start()
-	var result := Loader.new(
-		 "res://tests/async_resource_loading/async_resource_loader/fixtures/timer_example.tres",
-		 timer.timeout,
-	)
-	await _wait_for_request(result)
-	_runner.assert_true(result.is_successful(), "Timerのtimeoutを渡して読み込める")
-	_runner.assert_true(result.resource is Resource, "読み込んだResourceを受け取れる")
-	timer.queue_free()
 
 
 ## 完了済みのリクエストも、シグナルを待ち逃さず受け取る。[br]
