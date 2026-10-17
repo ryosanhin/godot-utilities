@@ -91,7 +91,11 @@ func _run_tests() -> void:
 	_runner.assert_equal(empty.error_code, Loader.ErrorCode.EMPTY_PATH, "空のパスは未指定として区別する")
 	
 	# 異なる型ヒントを渡した場合
-	var failed := Loader.new(RESOURCE_PATH, process_frame, "PackedScene")
+	var failed := Loader.new(
+			"res://tests/async_resource_loading/async_resource_loader/fixtures/non_scene.tres",
+			process_frame,
+			"PackedScene",
+	)
 	await _wait_for_request(failed)
 	_runner.assert_equal(failed.error_code, Loader.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
 	_runner.assert_null(failed.resource, "読み込み失敗時もResourceを持たない")
@@ -109,7 +113,10 @@ func _test_timer_signal() -> void:
 	timer.wait_time = 0.01
 	root.add_child(timer)
 	timer.start()
-	var result := Loader.new(RESOURCE_PATH, timer.timeout)
+	var result := Loader.new(
+		 "res://tests/async_resource_loading/async_resource_loader/fixtures/timer_example.tres",
+		 timer.timeout,
+	)
 	await _wait_for_request(result)
 	_runner.assert_true(result.is_successful(), "Timerのtimeoutを渡して読み込める")
 	_runner.assert_true(result.resource is Resource, "読み込んだResourceを受け取れる")
