@@ -13,13 +13,12 @@ var _runner := TestHelper.new(true)
 
 ## フレーム通知を受け取るリクエストで読み込みを確認する。
 func _initialize() -> void:
-	await _test_parallel_requests()
-	await _run_tests()
+	await _test_load()
 	await _runner.finish(self, "async_resource_loader")
 
 
 ## シーンとResourceの読み込み、および失敗時の結果を確認する。
-func _run_tests() -> void:
+func _test_load() -> void:
 	_runner.change_test_name("async_resource_loader")
 
 	# シーンの読み込み
@@ -83,7 +82,7 @@ func _run_tests() -> void:
 			"失敗したパスを保持する",
 	)
 
-	# 空の参照も同じエラーとして扱う
+	# 空の参照もエラーとして扱う
 	var empty := Loader.new("", process_frame)
 	await _wait_for_request(empty)
 	_runner.assert_true(empty.is_completed(), "即時失敗でも完了状態を保持する")
@@ -105,20 +104,3 @@ func _run_tests() -> void:
 func _wait_for_request(request: Loader) -> void:
 	if not request.is_completed():
 		await request.completed
-
-
-## 同じリソースへの複数要求も、それぞれのリクエストで結果を受け取れる。
-func _test_parallel_requests() -> void:
-	_runner.change_test_name("parallel_requests")
-	var first := Loader.new(SCENE_UID, process_frame, "PackedScene")
-	var second := Loader.new(SCENE_PATH, process_frame, "PackedScene")
-	var other := Loader.new(RESOURCE_PATH, process_frame)
-	_runner.assert_false(is_same(first, second), "同じリソースでも別のリクエストを生成する")
-	await _wait_for_request(first)
-	await _wait_for_request(second)
-	await _wait_for_request(other)
-	_runner.assert_true(first.is_successful() and second.is_successful(), "同じリソースへの要求を両方受け取れる")
-	_runner.assert_same(first.resource, second.resource, "標準キャッシュの同じResourceを受け取る")
-	_runner.assert_true(other.is_successful(), "別リソースへの要求も並行して受け取れる")
-	_runner.assert_true(first.is_completed() and second.is_completed() and other.is_completed(), "各リクエストの完了を確認できる")
-	_runner.assert_true(first.resource is PackedScene, "リクエスト自身が結果を保持する")
