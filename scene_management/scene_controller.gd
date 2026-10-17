@@ -1,7 +1,7 @@
 extends Node
 class_name SceneController
 
-const AsyncResourceLoader := preload("res://addons/async_resource_loading/async_resource_loader.gd")
+const AsyncResourceLoader := preload("res://async_resource_loading/async_resource_loader.gd")
 const TransitionController := preload("transition_management/transition_controller.gd")
 
 ## シーン切り替えと画面を覆う演出の開始を通知する。
