@@ -1,9 +1,0 @@
-[gd_resource type="ShaderMaterial" format=3 uid="uid://dn8sk6cmqrefb"]
-
-[ext_resource type="Shader" uid="uid://crjxmgarmv78q" path="res://addons/scene_management/materials/transition_shader.tres" id="1_opu66"]
-[ext_resource type="Texture2D" uid="uid://c14i4vs26keos" path="res://addons/scene_management/materials/circle_fade.png" id="2_6mfw6"]
-
-[resource]
-shader = ExtResource("1_opu66")
-shader_parameter/Texture = ExtResource("2_6mfw6")
-shader_parameter/Value = 0.0
