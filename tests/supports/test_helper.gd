@@ -179,12 +179,23 @@ func _record(passed: bool, message: String, expected: Variant, actual: Variant) 
 func _are_equal(actual: Variant, expected: Variant) -> bool:
 	var actual_type := typeof(actual)
 	var expected_type := typeof(expected)
-	if actual_type == expected_type or actual_type == TYPE_NIL or expected_type == TYPE_NIL:
+
+	if (
+			actual_type == expected_type 
+			or actual_type == TYPE_NIL 
+			or expected_type == TYPE_NIL
+	):
 		return actual == expected
+
 	if (actual is int or actual is float) and (expected is int or expected is float):
 		return actual == expected
-	if (actual is String or actual is StringName) and (expected is String or expected is StringName):
+
+	if (
+			(actual is String or actual is StringName)
+			and (expected is String or expected is StringName)
+	):
 		return actual == expected
+
 	return false
 
 
