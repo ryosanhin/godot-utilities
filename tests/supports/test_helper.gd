@@ -41,7 +41,8 @@ func assert_false(
 	_record(not condition, message, false, condition)
 
 
-## 等値であるか。[br]
+## 等値であるか。比較不能な型の組み合わせは等しくないと扱う。[br]
+## 同じ型・intとfloat・StringとStringName・nullとの比較はGodotの等値比較に従う。[br]
 ## [param actual]: 実際の値[br]
 ## [param expected]: 等しくなって欲しい値[br]
 ## [param message]: 成功時に表示するメッセージ
@@ -50,19 +51,19 @@ func assert_equal(
 	expected: Variant,
 	message: String,
 ) -> void:
-	_record(actual == expected, message, expected, actual)
+	_record(_are_equal(actual, expected), message, expected, actual)
 
 
-## 非等値であるか。[br]
+## 非等値であるか。比較ルールは[method assert_equal]と同じ。[br]
 ## [param actual]: 実際の値[br]
-## [param expected]: 等しくなって欲しくない値[br]
+## [param unexpected]: 等しくなって欲しくない値[br]
 ## [param message]: 成功時に表示するメッセージ
 func assert_not_equal(
 	actual: Variant,
 	unexpected: Variant,
 	message: String,
 ) -> void:
-	_record(actual != unexpected, message, "not %s" % _inspect(unexpected), actual)
+	_record(not _are_equal(actual, unexpected), message, "not %s" % _inspect(unexpected), actual)
 
 
 ## 同一インスタンスであるか。[br]
@@ -169,6 +170,33 @@ func _record(passed: bool, message: String, expected: Variant, actual: Variant) 
 					_inspect(actual)
 			],
 	)
+
+
+## 比較不能な型を除外し、Godotの値の等値比較を行う。[br]
+## 配列・辞書の内容比較とObjectの参照比較もGodotに委ね、型変換は行わない。[br]
+## [param actual]: 実際の値[br]
+## [param expected]: 比較対象の値
+func _are_equal(actual: Variant, expected: Variant) -> bool:
+	var actual_type := typeof(actual)
+	var expected_type := typeof(expected)
+
+	if (
+			actual_type == expected_type 
+			or actual_type == TYPE_NIL 
+			or expected_type == TYPE_NIL
+	):
+		return actual == expected
+
+	if (actual is int or actual is float) and (expected is int or expected is float):
+		return actual == expected
+
+	if (
+			(actual is String or actual is StringName)
+			and (expected is String or expected is StringName)
+	):
+		return actual == expected
+
+	return false
 
 
 func _inspect(value: Variant) -> String:
