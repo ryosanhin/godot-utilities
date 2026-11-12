@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://bpqepsdm0gv16"]
+
+[ext_resource type="Script" uid="uid://dbve5x7pse5dj" path="res://scene_management/scene_controller.gd" id="1_yyxy7"]
+[ext_resource type="PackedScene" uid="uid://cjpno3mma0auk" path="res://scene_management/transition_management/transition_controller.tscn" id="2_x0ni4"]
+
+[node name="SceneController" type="Node" unique_id=1226120305 node_paths=PackedStringArray("_transition_controller")]
+script = ExtResource("1_yyxy7")
+_transition_controller = NodePath("TransitionController")
+
+[node name="TransitionController" parent="." unique_id=1857992624 instance=ExtResource("2_x0ni4")]
