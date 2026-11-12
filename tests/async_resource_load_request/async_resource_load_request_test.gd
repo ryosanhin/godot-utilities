@@ -1,12 +1,12 @@
 extends SceneTree
 
 const TestHelper := preload("res://tests/supports/test_helper.gd")
-const Loader := preload("res://async_resource_loading/async_resource_loader.gd")
+const Loader := preload("res://async_resource_load_request/async_resource_load_request.gd")
 
 const SCENE_UID := "uid://cclwwdo81dta1"
-const SCENE_PATH := "res://tests/async_resource_loading/async_resource_loader/fixtures/example.tscn"
+const SCENE_PATH := "res://tests/async_resource_load_request/fixtures/example.tscn"
 
-const RESOURCE_PATH := "res://tests/async_resource_loading/async_resource_loader/fixtures/example.tres"
+const RESOURCE_PATH := "res://tests/async_resource_load_request/fixtures/example.tres"
 
 var _helper := TestHelper.new(true)
 
@@ -65,7 +65,7 @@ func _test_load() -> void:
 
 	# 存在しないResouceの取得
 	var missing := Loader.new(
-			"res://tests/async_resource_loading/async_resource_loader/fixtures/missing.tres",
+			"res://tests/async_resource_load_request/fixtures/missing.tres",
 			process_frame,
 	)
 	await _wait_for_request(missing)
@@ -78,7 +78,7 @@ func _test_load() -> void:
 	_helper.assert_null(missing.resource, "失敗時はResourceを持たない")
 	_helper.assert_equal(
 			missing.resource_reference,
-			"res://tests/async_resource_loading/async_resource_loader/fixtures/missing.tres",
+			"res://tests/async_resource_load_request/fixtures/missing.tres",
 			"失敗したパスを保持する",
 	)
 
@@ -90,7 +90,7 @@ func _test_load() -> void:
 	
 	# 異なる型ヒントを渡した場合
 	var failed := Loader.new(
-			"res://tests/async_resource_loading/async_resource_loader/fixtures/non_scene.tres",
+			"res://tests/async_resource_load_request/fixtures/non_scene.tres",
 			process_frame,
 			"PackedScene",
 	)

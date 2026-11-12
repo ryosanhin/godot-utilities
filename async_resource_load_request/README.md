@@ -7,7 +7,7 @@
 以下はNodeのメソッド内での使用例です。
 
 ```gdscript
-const AsyncResourceLoader := preload("res://async_resource_loading/async_resource_loader.gd")
+const AsyncResourceLoader := preload("res://async_resource_load_request/async_resource_load_request.gd")
 
 
 func load_scene_async() -> PackedScene:
