@@ -1,7 +1,7 @@
 extends SceneTree
 
 const TestHelper := preload("res://tests/supports/test_helper.gd")
-const Loader := preload("res://async_resource_loading/async_resource_loader.gd")
+const Loader := preload("res://async_resource_load_request/async_resource_load_request.gd")
 
 const SCENE_UID := "uid://cclwwdo81dta1"
 const SCENE_PATH := "res://tests/async_resource_loading/async_resource_loader/fixtures/example.tscn"
