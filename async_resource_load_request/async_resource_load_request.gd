@@ -29,15 +29,15 @@ var _is_completed := false
 ## 1件のリクエストを生成し、読み込みを開始する。[br]
 ## 読み込み中は実行中のSceneTreeの各プロセスフレームで状態を確認する。[br]
 ## すでに完了している場合もあるため、待機前にis_completed()を確認する。[br]
-## [param init_resource_reference]: プロジェクト内のリソースのUID、res:// パス、相対パス、絶対パス[br]
+## [param resource_reference]: プロジェクト内のリソースのUID、res:// パス、相対パス、絶対パス[br]
 ## [param type_hint]: ResourceLoaderへ渡す型のヒント。結果の型を保証するものではない
-func _init(init_resource_reference: String, type_hint: String = "") -> void:
-	_resource_path = resolve_resource_path(init_resource_reference)
+func _init(resource_reference: String, type_hint: String = "") -> void:
+	_resource_path = resolve_resource_path(resource_reference)
 	if _resource_path.is_empty():
 		error_code = ErrorCode.INVALID_REFERENCE
 		_unresolved_reference_error = (
 				'リソース参照をプロジェクト内のパスに解決できませんでした: "%s"'
-				% init_resource_reference
+				% resource_reference
 		)
 		_complete()
 		return
