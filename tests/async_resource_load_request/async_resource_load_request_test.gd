@@ -12,7 +12,7 @@ const RESOURCE_PATH := "res://tests/async_resource_load_request/fixtures/example
 var _helper := TestHelper.new(true)
 
 
-## フレーム通知を受け取るリクエストで読み込みを確認する。
+## 実行中のSceneTreeを利用してリソースを読み込めることを確認する。
 func _initialize() -> void:
 	_test_resolve_resource_path()
 	await _test_load()
@@ -54,7 +54,7 @@ func _test_load() -> void:
 	_helper.change_test_name("async_resource_loader")
 
 	# シーンの読み込み
-	var scene := Loader.new(SCENE_UID, process_frame, "PackedScene")
+	var scene := Loader.new(SCENE_UID, "PackedScene")
 	await _wait_for_request(scene)
 	_helper.assert_true(scene.resource is PackedScene, "UIDからPackedSceneを取得できる")
 	_helper.assert_true(scene.is_successful(), "読み込み成功を判別できる")
@@ -62,7 +62,7 @@ func _test_load() -> void:
 	_helper.assert_equal(scene.resource_path, SCENE_PATH, "解決した res:// パスを保持する")
 
 	# 存在しないUIDを指定したとき
-	var invalid := Loader.new("uid://invalid", process_frame)
+	var invalid := Loader.new("uid://invalid")
 	await _wait_for_request(invalid)
 	_helper.assert_equal(
 			invalid.error_code,
@@ -74,7 +74,7 @@ func _test_load() -> void:
 
 	# 存在しないUIDを指定したとき
 	var unknown_uid := ResourceUID.create_id()
-	var unknown := Loader.new(ResourceUID.id_to_text(unknown_uid), process_frame)
+	var unknown := Loader.new(ResourceUID.id_to_text(unknown_uid))
 	await _wait_for_request(unknown)
 	_helper.assert_equal(
 			unknown.error_code,
@@ -83,15 +83,12 @@ func _test_load() -> void:
 	)
 
 	# シーン以外のResourceの取得
-	var resource := Loader.new(RESOURCE_PATH, process_frame)
+	var resource := Loader.new(RESOURCE_PATH)
 	await _wait_for_request(resource)
 	_helper.assert_true(resource.resource is Resource, "シーン以外のResourceも取得できる")
 
 	# 存在しないResouceの取得
-	var missing := Loader.new(
-			MISSING_RESOURCE_PATH.trim_prefix("res://"),
-			process_frame,
-	)
+	var missing := Loader.new(MISSING_RESOURCE_PATH.trim_prefix("res://"))
 	await _wait_for_request(missing)
 	_helper.assert_equal(
 			missing.error_code,
@@ -111,7 +108,7 @@ func _test_load() -> void:
 	)
 
 	# 空の参照もエラーとして扱う
-	var empty := Loader.new("", process_frame)
+	var empty := Loader.new("")
 	await _wait_for_request(empty)
 	_helper.assert_true(empty.is_completed(), "即時失敗でも完了状態を保持する")
 	_helper.assert_equal(empty.error_code, Loader.ErrorCode.INVALID_REFERENCE, "空の参照も参照エラーとして返す")
@@ -119,7 +116,6 @@ func _test_load() -> void:
 	# 異なる型ヒントを渡した場合
 	var failed := Loader.new(
 			"res://tests/async_resource_load_request/fixtures/non_scene.tres",
-			process_frame,
 			"PackedScene",
 	)
 	await _wait_for_request(failed)

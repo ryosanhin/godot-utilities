@@ -10,6 +10,7 @@ enum ErrorCode {
 	REQUEST_FAILED,
 	LOAD_FAILED,
 	INVALID_REQUEST,
+	SCENE_TREE_UNAVAILABLE,
 }
 
 var error_code: ErrorCode = ErrorCode.OK
@@ -26,16 +27,11 @@ var _is_completed := false
 
 
 ## 1件のリクエストを生成し、読み込みを開始する。[br]
+## 読み込み中は実行中のSceneTreeの各プロセスフレームで状態を確認する。[br]
 ## すでに完了している場合もあるため、待機前にis_completed()を確認する。[br]
 ## [param init_resource_reference]: プロジェクト内のリソースのUID、res:// パス、相対パス、絶対パス[br]
-## [param check_requested]: 読み込み中も繰り返し発火する有効なシグナル。
-## シグナルの発行元は、読み込みが完了するまで維持すること。[br]
 ## [param type_hint]: ResourceLoaderへ渡す型のヒント。結果の型を保証するものではない
-func _init(
-		init_resource_reference: String,
-		check_requested: Signal,
-		type_hint: String = "",
-) -> void:
+func _init(init_resource_reference: String, type_hint: String = "") -> void:
 	_resource_path = resolve_resource_path(init_resource_reference)
 	if _resource_path.is_empty():
 		error_code = ErrorCode.INVALID_REFERENCE
@@ -45,7 +41,7 @@ func _init(
 		)
 		_complete()
 		return
-	_load_resource_async(type_hint, check_requested)
+	_load_resource_async(type_hint)
 
 
 ## UIDまたはパスを正規化した res:// パスに変換する。[br]
@@ -95,17 +91,24 @@ func format_error() -> String:
 			return "リソースの読み込みに失敗しました: %s" % _resource_path
 		ErrorCode.INVALID_REQUEST:
 			return "読み込み要求が無効です: %s" % _resource_path
+		ErrorCode.SCENE_TREE_UNAVAILABLE:
+			return "実行中のSceneTreeを取得できませんでした: %s" % _resource_path
 
 	return "不明なリソース読み込みエラーです。"
 
 
 ## Resourceをバックグラウンドで読み込み、結果を確定する。[br]
 ## リクエスト生成時に一度だけ呼び出す。[br]
-## [param type_hint]: ResourceLoaderへ渡す型のヒント[br]
-## [param check_requested]: 読み込み状況の再確認を知らせるシグナル
-func _load_resource_async(type_hint: String, check_requested: Signal) -> void:
+## [param type_hint]: ResourceLoaderへ渡す型のヒント
+func _load_resource_async(type_hint: String) -> void:
 	if not ResourceLoader.exists(_resource_path):
 		error_code = ErrorCode.INVALID_REFERENCE
+		_complete()
+		return
+
+	var scene_tree := Engine.get_main_loop() as SceneTree
+	if scene_tree == null:
+		error_code = ErrorCode.SCENE_TREE_UNAVAILABLE
 		_complete()
 		return
 
@@ -125,7 +128,7 @@ func _load_resource_async(type_hint: String, check_requested: Signal) -> void:
 				_complete()
 				return
 			ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-				await check_requested
+				await scene_tree.process_frame
 			_:
 				if status == ResourceLoader.THREAD_LOAD_FAILED:
 					# 完了済みの失敗要求も回収し、ローダー内部の参照を残さない。
