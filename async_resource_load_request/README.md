@@ -20,8 +20,9 @@ func load_scene_async() -> PackedScene:
 	return request.resource as PackedScene
 ```
 
-- 生成時に読み込みを開始します。すでに完了している場合があるため、待機前に`is_completed()`を確認します。
+- 生成時に読み込みを開始します。結果を使う場合は `is_completed()` を確認し、未完了なら `completed` を待ちます。
 - 実行中の `SceneTree` を `Engine.get_main_loop()` から取得し、読み込み中は `process_frame` ごとに状態を確認します。`SceneTree` を取得できない場合は、読み込みを開始する前に `ErrorCode.SCENE_TREE_UNAVAILABLE` で完了します。
+- 呼び出し元がリクエストへの参照を手放しても、メインの `SceneTree` がフレームを進める間は、結果を回収するまでリクエストを内部で保持します。
 - 成功・失敗のどちらでも`completed`を通知します。成功時のリソースは`resource`で取得します。
 - 失敗理由は`error_code`と`format_error()`で確認できます。
 - 正規化した `res://` パスを `resource_path` で取得できます。読み込み要求とエラー説明にはこのパスを使います。

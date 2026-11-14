@@ -97,7 +97,7 @@ func format_error() -> String:
 	return "不明なリソース読み込みエラーです。"
 
 
-## Resourceをバックグラウンドで読み込み、結果を確定する。[br]
+## Resourceのバックグラウンド読み込みを開始する。[br]
 ## リクエスト生成時に一度だけ呼び出す。[br]
 ## [param type_hint]: ResourceLoaderへ渡す型のヒント
 func _load_resource_async(type_hint: String) -> void:
@@ -118,28 +118,34 @@ func _load_resource_async(type_hint: String) -> void:
 		_complete()
 		return
 
-	while true:
-		var status := ResourceLoader.load_threaded_get_status(_resource_path)
-		match status:
-			ResourceLoader.THREAD_LOAD_LOADED:
-				resource = ResourceLoader.load_threaded_get(_resource_path)
-				if resource == null:
-					error_code = ErrorCode.LOAD_FAILED
-				_complete()
-				return
-			ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-				await scene_tree.process_frame
-			_:
-				if status == ResourceLoader.THREAD_LOAD_FAILED:
-					# 完了済みの失敗要求も回収し、ローダー内部の参照を残さない。
-					ResourceLoader.load_threaded_get(_resource_path)
-				error_code = (
-					ErrorCode.LOAD_FAILED
-					if status == ResourceLoader.THREAD_LOAD_FAILED
-					else ErrorCode.INVALID_REQUEST
-				)
-				_complete()
-				return
+	_check_load_status(scene_tree)
+
+
+## 受理済みの要求を回収するか、読み込み中なら次のフレームに確認を予約する。[br]
+## [param scene_tree]: 次の状態確認に使用する実行中のSceneTree
+func _check_load_status(scene_tree: SceneTree) -> void:
+	var status := ResourceLoader.load_threaded_get_status(_resource_path)
+	if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		# ラムダがローカル変数をキャプチャし、次の確認までリクエストを強参照する。
+		var request := self
+		scene_tree.process_frame.connect(
+				func() -> void: request._check_load_status(scene_tree),
+				CONNECT_ONE_SHOT,
+		)
+		return
+
+	# 失敗した要求も回収し、ResourceLoader内部の参照を残さない。
+	var loaded_resource := ResourceLoader.load_threaded_get(_resource_path)
+	match status:
+		ResourceLoader.THREAD_LOAD_LOADED:
+			resource = loaded_resource
+			if resource == null:
+				error_code = ErrorCode.LOAD_FAILED
+		ResourceLoader.THREAD_LOAD_FAILED:
+			error_code = ErrorCode.LOAD_FAILED
+		_:
+			error_code = ErrorCode.INVALID_REQUEST
+	_complete()
 
 
 ## 結果を確定し、完了を通知する。
