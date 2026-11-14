@@ -130,13 +130,12 @@ func _resolve_scene_entry(scene_id: StringName) -> SceneEntry:
 ## [param entry]: 切り替え先のシーンのUIDまたはパスを持つエントリー
 func _instantiate_scene(entry: SceneEntry) -> Node:
 	var request := AsyncResourceLoader.new(entry.scene_reference, "PackedScene")
-	if not request.is_completed():
-		await request.completed
-	if not request.is_successful():
+	var loaded_resource := await request.get_resource_async()
+	if loaded_resource == null:
 		push_error(request.format_error())
 		return null
 
-	var packed_scene := request.resource as PackedScene
+	var packed_scene := loaded_resource as PackedScene
 	if packed_scene == null:
 		push_error("切り替え先のPackedSceneを読み込めませんでした: %s" % entry.scene_reference)
 		return null

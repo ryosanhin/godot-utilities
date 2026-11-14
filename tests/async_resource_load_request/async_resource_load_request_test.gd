@@ -82,15 +82,15 @@ func _test_load() -> void:
 
 	# シーンの読み込み
 	var scene := Loader.new(SCENE_UID, "PackedScene")
-	await _wait_for_request(scene)
-	_helper.assert_true(scene.resource is PackedScene, "UIDからPackedSceneを取得できる")
+	var packed_scene := (await scene.get_resource_async()) as PackedScene
+	_helper.assert_true(packed_scene != null, "UIDからPackedSceneを取得できる")
+	_helper.assert_same(await scene.get_resource_async(), packed_scene, "完了済みなら同じリソースを返す")
 	_helper.assert_true(scene.is_successful(), "読み込み成功を判別できる")
 	_helper.assert_equal(scene.error_code, Loader.ErrorCode.OK, "成功コードを返す")
 	_helper.assert_equal(scene.resource_path, SCENE_PATH, "解決した res:// パスを保持する")
 
 	# 存在しないUIDを指定したとき
 	var invalid := Loader.new("uid://invalid")
-	await _wait_for_request(invalid)
 	_helper.assert_equal(
 			invalid.error_code,
 			Loader.ErrorCode.INVALID_REFERENCE,
@@ -102,7 +102,6 @@ func _test_load() -> void:
 	# 存在しないUIDを指定したとき
 	var unknown_uid := ResourceUID.create_id()
 	var unknown := Loader.new(ResourceUID.id_to_text(unknown_uid))
-	await _wait_for_request(unknown)
 	_helper.assert_equal(
 			unknown.error_code,
 			Loader.ErrorCode.INVALID_REFERENCE,
@@ -111,12 +110,10 @@ func _test_load() -> void:
 
 	# シーン以外のResourceの取得
 	var resource := Loader.new(RESOURCE_PATH)
-	await _wait_for_request(resource)
-	_helper.assert_true(resource.resource is Resource, "シーン以外のResourceも取得できる")
+	_helper.assert_true(await resource.get_resource_async() != null, "シーン以外のResourceも取得できる")
 
 	# 存在しないResouceの取得
 	var missing := Loader.new(MISSING_RESOURCE_PATH.trim_prefix("res://"))
-	await _wait_for_request(missing)
 	_helper.assert_equal(
 			missing.error_code,
 			Loader.ErrorCode.INVALID_REFERENCE,
@@ -136,8 +133,8 @@ func _test_load() -> void:
 
 	# 空の参照もエラーとして扱う
 	var empty := Loader.new("")
-	await _wait_for_request(empty)
 	_helper.assert_true(empty.is_completed(), "即時失敗でも完了状態を保持する")
+	_helper.assert_null(await empty.get_resource_async(), "即時失敗時はnullを返す")
 	_helper.assert_equal(empty.error_code, Loader.ErrorCode.INVALID_REFERENCE, "空の参照も参照エラーとして返す")
 	
 	# 異なる型ヒントを渡した場合
@@ -145,7 +142,7 @@ func _test_load() -> void:
 			"res://tests/async_resource_load_request/fixtures/non_scene.tres",
 			"PackedScene",
 	)
-	await _wait_for_request(failed)
+	_helper.assert_null(await failed.get_resource_async(), "読み込み失敗時はnullを返す")
 	_helper.assert_equal(failed.error_code, Loader.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
 	_helper.assert_null(failed.resource, "読み込み失敗時もResourceを持たない")
 
@@ -188,10 +185,3 @@ func _test_release_pending_request() -> void:
 	_helper.assert_equal(status, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE, "Godotに未回収の要求が残らない")
 	_helper.assert_equal(completions.size(), 1, "完了を一度だけ通知する")
 	_helper.assert_null(request_ref.get_ref(), "回収後にリクエストを解放する")
-
-
-## 完了済みのリクエストも、シグナルを待ち逃さず受け取る。[br]
-## [param request]: 完了を待つリクエスト
-func _wait_for_request(request: Loader) -> void:
-	if not request.is_completed():
-		await request.completed
