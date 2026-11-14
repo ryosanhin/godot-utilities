@@ -1,6 +1,6 @@
 # シーン切り替え
 
-`SceneController`は、専用ルートの子シーンを画面演出付きで交換します。読み込みには[非同期リソース読み込み](../async_resource_loading/README.md)を使用します。
+`SceneController`は、専用ルートの子シーンを画面演出付きで交換します。読み込みには[非同期リソース読み込み](../async_resource_load_request\README.md)を使用します。
 
 ## 設定
 
