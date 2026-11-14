@@ -28,7 +28,7 @@ var _is_completed := false
 
 ## 1件のリクエストを生成し、読み込みを開始する。[br]
 ## 読み込み中は実行中のSceneTreeの各プロセスフレームで状態を確認する。[br]
-## すでに完了している場合もあるため、待機前にis_completed()を確認する。[br]
+## 読み込み結果は [method get_resource_async] で取得できる。[br]
 ## [param resource_reference]: プロジェクト内のリソースのUID、res:// パス、相対パス、絶対パス[br]
 ## [param type_hint]: ResourceLoaderへ渡す型のヒント。結果の型を保証するものではない
 func _init(resource_reference: String, type_hint: String = "") -> void:
@@ -64,6 +64,16 @@ static func resolve_resource_path(uid_or_path: String) -> String:
 	if not path.begins_with("res://") or path.trim_prefix("res://").get_slice("/", 0) == "..":
 		return ""
 	return path
+
+
+## 読み込みの完了を待ち、成功時はリソース、失敗時はnullを返す。[br]
+## 完了済みの場合はその場で結果を返す。
+func get_resource_async() -> Resource:
+	if not is_completed():
+		await completed
+	if not is_successful():
+		return null
+	return resource
 
 
 ## 読み込みが成功または失敗で完了したか。
