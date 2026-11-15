@@ -1,12 +1,12 @@
 # シーン切り替え
 
-`SceneController`は、専用ルートの子シーンを画面演出付きで交換します。読み込みには[非同期リソース読み込み](../async_resource_load_request\README.md)を使用します。
+`SceneController`は、専用ルートの子シーンを画面演出付きで交換します。読み込みには[非同期リソース読み込み](../async_resource_load_request/README.md)を使用します。
 
 ## 設定
 
-1. `scene_management/`と`async_resource_loading/`をプロジェクト直下へ配置します。
+1. `scene_management/`と`async_resource_load_request/`をプロジェクト直下へ配置します。
 2. `scene_controller.tscn`を、切り替え時にも残るシーンにインスタンス化します。
-3. `SceneRegistry`を作成し、`_data_dict`にシーンIDと`SceneEntry`を登録します。`SceneEntry.scene_path`には切り替え先のシーンを指定し、Registryをコントローラーの`_scene_registry`に設定します。
+3. `SceneRegistry`を作成し、`_data_dict`にシーンIDと`SceneEntry`を登録します。`SceneEntry.scene_reference`には切り替え先のシーンを指定し、Registryをコントローラーの`_scene_registry`に設定します。
 4. 交換対象のシーンだけを子に持つNodeを用意し、`_main_scenes_root`へ設定します。コントローラー自身は交換対象の配下に置かないでください。
 5. 子の`TransitionController`に[画面演出のRegistry](transition_management/README.md)を設定します。必要に応じて「編集可能な子」を有効にします。
 6. 初期シーンを使う場合は専用ルートへ配置し、そのIDを`init_scene_id`に設定します。このIDを設定するだけではシーンは読み込まれません。
