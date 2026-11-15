@@ -86,7 +86,7 @@ func _test_resolve_resource_path() -> void:
 
 ## シーンとResourceの読み込み、および失敗時の結果を確認する。
 func _test_load() -> void:
-	_helper.change_test_name("async_resource_loader")
+	_helper.change_test_name("async_resource_load")
 
 	# シーンの読み込み
 	var scene := Loader.new(SCENE_UID)
