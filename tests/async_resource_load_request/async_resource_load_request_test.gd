@@ -153,6 +153,11 @@ func _test_load() -> void:
 	_helper.assert_null(await failed.get_resource_async(), "読み込み失敗時はnullを返す")
 	_helper.assert_equal(failed.error_code, Loader.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
 	_helper.assert_null(failed.resource, "読み込み失敗時もResourceを持たない")
+	_helper.assert_equal(
+			ResourceLoader.load_threaded_get_status(MALFORMED_RESOURCE_PATH),
+			ResourceLoader.THREAD_LOAD_INVALID_RESOURCE,
+			"読み込みに失敗した要求もGodotから回収する",
+	)
 
 
 ## 外部参照を手放した読み込み中の要求も回収され、リクエストが解放されることを確認する。
