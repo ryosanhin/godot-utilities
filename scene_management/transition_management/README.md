@@ -1,34 +1,36 @@
 # 画面切り替え演出
 
-`TransitionController`は、CanvasLayer上のColorRectとシェーダーで画面を覆う・戻す演出を行います。シーン交換処理とは独立して使用できます。
+演出ごとに独立したシーンを用意し、ルートの`Control`に`transition_effect.gd`を割り当てます。`TransitionController`はシーン切り替えごとに演出を非同期で読み込み、同じインスタンスで画面を覆ってから戻します。
 
-## 設定
+## AnimationPlayerで演出を作る
 
-1. `transition_controller.tscn`をシーンに配置します。`scene_controller.tscn`を使う場合は、すでに子として配置されています。
-2. `TransitionRegistry`を作成し、`_entries`へ演出IDと`TransitionEntry`を登録します。
-3. 各Entryの`transition_texture`へマスク画像、`color`へ画面を覆う色を設定します。
-4. Registryをコントローラーの`_transition_registry`に設定します。
+1. 演出シーンのルートを全画面に配置します。配下に`AnimationPlayer`を追加し、ルートの`_animation_player`に設定します。
+2. `cover`は画面が見える状態から完全に覆った状態へ、`reveal`は覆った状態から画面が見える状態へ変化するように作ります。終了時の状態を保てるよう、両方をループなしに設定します。
+3. `AnimationPlayer`の自動再生を空にし、更新モードをIdleまたはPhysicsに設定します。ポーズ中にも再生できるよう、処理モードは演出ルートから継承するか、Alwaysを使用します。
 
-`_transition_rect`とマテリアルは付属シーンで設定済みです。`assets/`に円形マスク画像`circle_fade.png`と、マテリアル・VisualShaderを配置しています。
+付属の`circle_fade.tscn`を指定すると円形のシェーダーフェードを使えます。色は`ColorRect.color`、マスクは同ノードのマテリアルにある`Texture`で設定し、長さは`cover`と`reveal`のタイムラインと終点のキーで調整します。演出シーンの参照は`res://scene_management/transition_management/circle_fade.tscn`または`uid://dsa1axpkvfqo0`です。
 
-## 使い方
+## コードで演出を作る
 
-以下はNodeのメソッド内での使用例です。`transition`には配置済みのコントローラーを渡します。
+`transition_effect.gd`を継承したスクリプトを演出シーンのルートに付け、`cover_async()`と`reveal_async()`を上書きします。たとえばシャッターを子に置き、`cover_async()`でシャッターの`close_async()`の完了を待ち、`reveal_async()`で開く動作の完了を待てます。`is_configured()`も上書きし、ツリーへ追加する前に子ノードなどの依存関係を検証します。子ノードで処理モードを継承すると、ポーズ中も演出ルートと一緒に処理されます。
+
+## SceneControllerと独立して使う
+
+`transition_controller.tscn`を常駐するシーンに配置します。`transition`にはそのインスタンスを渡します。
 
 ```gdscript
 const TransitionController := preload(
-	"res://scene_management/transition_management/transition_controller.gd"
+		"res://scene_management/transition_management/transition_controller.gd"
 )
 
 
 func play_transition_async(transition: TransitionController) -> void:
-	await transition.fade_in(&"circle", 0.5)
-	# 画面が覆われている間に、シーン交換などを行います。
-	await transition.fade_out(&"circle", 0.5)
+	if not await transition.prepare_async("uid://dsa1axpkvfqo0"):
+		return
+	await transition.cover_async()
+	# 画面を完全に覆った状態で必要な処理を行います。
+	await transition.reveal_async()
+	transition.finish()
 ```
 
-`circle`はRegistryへ事前に登録したIDです。このモジュールでは`fade_in()`が画面を覆う処理、`fade_out()`が画面を戻す処理です。
-
-- 時間が0以下の場合は、アニメーションせず終了状態へ切り替えます。
-- 演出中はColorRectでマウス入力を受け止めます。キーボードなども含めた入力制御は利用側で行います。
-- 演出IDは事前に登録してください。未登録の場合、エラーを出力してその呼び出しを終了します。
+`cover_async()`から`finish()`までは、`CanvasLayer`上の全画面`Control`がゲーム画面へのGUIマウス入力を受け止めます。キーボードや`_input()`で直接読む入力は利用側で制御してください。
