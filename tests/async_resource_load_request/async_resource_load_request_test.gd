@@ -39,12 +39,19 @@ class PendingResourceLoader extends ResourceFormatLoader:
 		return Resource.new()
 
 
+class OwnerNode extends Node:
+	func wait_for_resource(request: Loader, resumptions: Array[bool]) -> void:
+		await request.get_resource_async()
+		resumptions.append(true)
+
+
 ## 実行中のSceneTreeを利用してリソースを読み込めることを確認する。
 func _initialize() -> void:
 	_test_resolve_resource_path()
 	await _test_load()
 	await _test_release_pending_request()
-	await _helper.finish(self, "async_resource_loader")
+	await _test_release_owner_node()
+	await _helper.finish(self, "async_resource_load_request")
 
 
 ## 同じリソースを指す入力を同じパスへ正規化し、プロジェクト外のパスを拒否する。
@@ -186,3 +193,62 @@ func _test_release_pending_request() -> void:
 	_helper.assert_equal(status, ResourceLoader.THREAD_LOAD_INVALID_RESOURCE, "Godotに未回収の要求が残らない")
 	_helper.assert_equal(completions.size(), 1, "完了を一度だけ通知する")
 	_helper.assert_null(request_ref.get_ref(), "回収後にリクエストを解放する")
+
+
+## 待機中のノードを破棄し、読み込み結果の回収と解放を確認する。
+func _test_release_owner_node() -> void:
+	_helper.change_test_name("release_owner_node")
+	var format_loader := PendingResourceLoader.new()
+	ResourceLoader.add_resource_format_loader(format_loader)
+
+	var path := PendingResourceLoader.PATH
+	var request := Loader.new(path)
+	var request_ref: WeakRef = weakref(request)
+	var resource_refs: Array[WeakRef] = []
+	var resumptions: Array[bool] = []
+
+	request.completed.connect(
+			func() -> void:
+				var finished := request_ref.get_ref() as Loader
+				if finished != null and finished.resource != null:
+					resource_refs.append(weakref(finished.resource)),
+			CONNECT_ONE_SHOT,
+	)
+
+	var node := OwnerNode.new()
+	root.add_child(node)
+	node.wait_for_resource(request, resumptions)
+	_helper.assert_equal(
+			ResourceLoader.load_threaded_get_status(path),
+			ResourceLoader.THREAD_LOAD_IN_PROGRESS,
+			"ノードを破棄する前は読み込み中",
+	)
+
+	request = null
+	node.queue_free()
+	while is_instance_valid(node):
+		await process_frame
+
+	format_loader.load_gate.post()
+	var deadline := Time.get_ticks_msec() + 5000
+	var status := ResourceLoader.load_threaded_get_status(path)
+	while status != ResourceLoader.THREAD_LOAD_INVALID_RESOURCE and Time.get_ticks_msec() < deadline:
+		await process_frame
+		status = ResourceLoader.load_threaded_get_status(path)
+
+	# 完了を処理したフレームのコールバックが解放されるまで待つ。
+	await process_frame
+
+	if status != ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		ResourceLoader.remove_resource_format_loader(format_loader)
+
+	_helper.assert_equal(
+			status,
+			ResourceLoader.THREAD_LOAD_INVALID_RESOURCE,
+			"Godotの要求を回収する",
+	)
+	_helper.assert_true(resumptions.is_empty(), "破棄済みノードのawait後の処理は実行しない")
+	_helper.assert_null(request_ref.get_ref(), "リクエストを解放する")
+	_helper.assert_equal(resource_refs.size(), 1, "読み込み結果のResourceを観測できる")
+	if resource_refs.size() == 1:
+		_helper.assert_null(resource_refs[0].get_ref(), "読み込んだResourceを解放する")
