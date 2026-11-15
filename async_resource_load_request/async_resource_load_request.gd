@@ -29,9 +29,8 @@ var _is_completed := false
 ## 1件のリクエストを生成し、読み込みを開始する。[br]
 ## 読み込み中は実行中のSceneTreeの各プロセスフレームで状態を確認する。[br]
 ## 読み込み結果は [method get_resource_async] で取得できる。[br]
-## [param resource_reference]: プロジェクト内のリソースのUID、res:// パス、相対パス、絶対パス[br]
-## [param type_hint]: ResourceLoaderへ渡す型のヒント。結果の型を保証するものではない
-func _init(resource_reference: String, type_hint: String = "") -> void:
+## [param resource_reference]: プロジェクト内のリソースのUID、res:// パス、相対パス、絶対パス
+func _init(resource_reference: String) -> void:
 	_resource_path = resolve_resource_path(resource_reference)
 	if _resource_path.is_empty():
 		error_code = ErrorCode.INVALID_REFERENCE
@@ -41,7 +40,7 @@ func _init(resource_reference: String, type_hint: String = "") -> void:
 		)
 		_complete()
 		return
-	_load_resource_async(type_hint)
+	_load_resource_async()
 
 
 ## UIDまたはパスを正規化した res:// パスに変換する。[br]
@@ -108,9 +107,8 @@ func format_error() -> String:
 
 
 ## Resourceのバックグラウンド読み込みを開始する。[br]
-## リクエスト生成時に一度だけ呼び出す。[br]
-## [param type_hint]: ResourceLoaderへ渡す型のヒント
-func _load_resource_async(type_hint: String) -> void:
+## リクエスト生成時に一度だけ呼び出す。
+func _load_resource_async() -> void:
 	if not ResourceLoader.exists(_resource_path):
 		error_code = ErrorCode.INVALID_REFERENCE
 		_complete()
@@ -122,7 +120,7 @@ func _load_resource_async(type_hint: String) -> void:
 		_complete()
 		return
 
-	request_error = ResourceLoader.load_threaded_request(_resource_path, type_hint)
+	request_error = ResourceLoader.load_threaded_request(_resource_path)
 	if request_error != OK:
 		error_code = ErrorCode.REQUEST_FAILED
 		_complete()

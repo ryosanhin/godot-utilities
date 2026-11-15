@@ -11,7 +11,7 @@ const AsyncResourceLoader := preload("res://async_resource_load_request/async_re
 
 
 func load_scene_async() -> PackedScene:
-	var request := AsyncResourceLoader.new("res://scenes/main.tscn", "PackedScene")
+	var request := AsyncResourceLoader.new("res://scenes/main.tscn")
 	return (await request.get_resource_async()) as PackedScene
 ```
 
@@ -22,6 +22,6 @@ func load_scene_async() -> PackedScene:
 - 失敗理由は`error_code`と`format_error()`で確認できます。
 - 正規化した `res://` パスを `resource_path` で取得できます。読み込み要求とエラー説明にはこのパスを使います。
 - 空文字列、解決できないUID、プロジェクト外を指すパス（`user://` を含む）、存在しないリソースは `ErrorCode.INVALID_REFERENCE` として扱います。パスに解決できなかった場合は `resource_path` が空文字列になり、エラー説明には元の入力が表示されます。
-- 第2引数は省略可能な型のヒントです。型が異なる場合もキャスト結果は `null` になるため、読み込み失敗と区別する場合はキャスト前の戻り値を確認します。
+- 取得したリソースは、呼び出し側で必要な型にキャストします。読み込み失敗と型の不一致を区別する場合は、キャスト前の戻り値を確認します。
 
 他モジュールへの依存はありません。エディタープラグインの有効化は不要です。

@@ -6,6 +6,7 @@ const Loader := preload("res://async_resource_load_request/async_resource_load_r
 const SCENE_UID := "uid://cclwwdo81dta1"
 const SCENE_PATH := "res://tests/async_resource_load_request/fixtures/example.tscn"
 const MISSING_RESOURCE_PATH := "res://tests/async_resource_load_request/fixtures/missing.tres"
+const MALFORMED_RESOURCE_PATH := "res://tests/async_resource_load_request/fixtures/malformed.tres"
 
 const RESOURCE_PATH := "res://tests/async_resource_load_request/fixtures/example.tres"
 
@@ -81,7 +82,7 @@ func _test_load() -> void:
 	_helper.change_test_name("async_resource_loader")
 
 	# シーンの読み込み
-	var scene := Loader.new(SCENE_UID, "PackedScene")
+	var scene := Loader.new(SCENE_UID)
 	var packed_scene := (await scene.get_resource_async()) as PackedScene
 	_helper.assert_true(packed_scene != null, "UIDからPackedSceneを取得できる")
 	_helper.assert_same(await scene.get_resource_async(), packed_scene, "完了済みなら同じリソースを返す")
@@ -109,8 +110,11 @@ func _test_load() -> void:
 	)
 
 	# シーン以外のResourceの取得
-	var resource := Loader.new(RESOURCE_PATH)
-	_helper.assert_true(await resource.get_resource_async() != null, "シーン以外のResourceも取得できる")
+	var resource_request := Loader.new(RESOURCE_PATH)
+	var non_scene := await resource_request.get_resource_async()
+	_helper.assert_true(non_scene != null, "シーン以外のResourceも取得できる")
+	_helper.assert_true(resource_request.is_successful(), "シーン以外のResourceも読み込み成功として扱う")
+	_helper.assert_null(non_scene as PackedScene, "シーン以外のResourceはPackedSceneにキャストできない")
 
 	# 存在しないResouceの取得
 	var missing := Loader.new(MISSING_RESOURCE_PATH.trim_prefix("res://"))
@@ -136,12 +140,9 @@ func _test_load() -> void:
 	_helper.assert_true(empty.is_completed(), "即時失敗でも完了状態を保持する")
 	_helper.assert_null(await empty.get_resource_async(), "即時失敗時はnullを返す")
 	_helper.assert_equal(empty.error_code, Loader.ErrorCode.INVALID_REFERENCE, "空の参照も参照エラーとして返す")
-	
-	# 異なる型ヒントを渡した場合
-	var failed := Loader.new(
-			"res://tests/async_resource_load_request/fixtures/non_scene.tres",
-			"PackedScene",
-	)
+
+	# 構文が壊れたResourceを指定した場合
+	var failed := Loader.new(MALFORMED_RESOURCE_PATH)
 	_helper.assert_null(await failed.get_resource_async(), "読み込み失敗時はnullを返す")
 	_helper.assert_equal(failed.error_code, Loader.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
 	_helper.assert_null(failed.resource, "読み込み失敗時もResourceを持たない")
