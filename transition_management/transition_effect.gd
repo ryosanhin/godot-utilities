@@ -31,6 +31,8 @@ func is_configured() -> bool:
 		var animation := _animation_player.get_animation(animation_name)
 		if animation.loop_mode != Animation.LOOP_NONE:
 			return false
+		if _animation_player.animation_get_next(animation_name) != &"":
+			return false
 	return true
 
 
