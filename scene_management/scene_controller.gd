@@ -30,9 +30,9 @@ var is_changing := false
 
 
 func get_current_main_scene_path() -> String:
-	var current_main_scene := _main_scenes_root.get_child(0)
-	if current_main_scene == null:
+	if _main_scenes_root.get_child_count() == 0:
 		return ""
+	var current_main_scene := _main_scenes_root.get_child(0)
 	return current_main_scene.scene_file_path
 
 
