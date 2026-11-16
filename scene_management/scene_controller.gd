@@ -31,6 +31,8 @@ var is_changing := false
 
 func get_current_main_scene_path() -> String:
 	var current_main_scene := _main_scenes_root.get_child(0)
+	if current_main_scene == null:
+		return ""
 	return current_main_scene.scene_file_path
 
 
@@ -75,10 +77,10 @@ func change_main_scene_async(
 
 	var next_scene := await _instantiate_scene_async(scene_path)
 	var is_replaceable := next_scene != null
+	var is_replaced := false
 	if is_replaceable:
-		_replace_main_scene(next_scene)
+		is_replaced = _try_replace_main_scene(next_scene)
 	
-	var is_replaced := get_current_main_scene_path() == scene_path
 	if is_replaced:
 		main_scene_added.emit(scene_path)
 
@@ -118,8 +120,16 @@ func _instantiate_scene_async(scene_path: String) -> Node:
 
 ## 旧シーンを専用ルートから外して解放し、新シーンを追加する。[br]
 ## [param next_scene]: 切り替え先のノード
-func _replace_main_scene(next_scene: Node) -> void:
+func _try_replace_main_scene(next_scene: Node) -> bool:
 	for current_scene in _main_scenes_root.get_children():
 		_main_scenes_root.remove_child(current_scene)
 		current_scene.queue_free()
 	_main_scenes_root.add_child(next_scene)
+
+	if (
+			next_scene.is_inside_tree()
+			and next_scene.get_parent() == _main_scenes_root
+	):
+		return true
+
+	return false
