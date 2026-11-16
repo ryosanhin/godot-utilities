@@ -1,98 +1,74 @@
 extends CanvasLayer
+## 画面切り替えごとに演出を準備し、再生中のマウス入力を遮断する。
 
-@export var _transition_registry: TransitionRegistry
+const TransitionEffect := preload("transition_effect.gd")
 
-@export var _transition_rect: ColorRect
+@export var _input_blocker: Control
 
-var _material: ShaderMaterial
-
-const VALUE_PARAMETER := &"Value"
-const TEXTURE_PARAMETER := &"Texture"
-
-
-func _ready() -> void:
-	var screen_material := _transition_rect.material
-
-	_material = screen_material.duplicate() as ShaderMaterial
-	_transition_rect.material = _material
-
-	_set_value(0.0)
-	_transition_rect.hide()
-	_transition_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+var _effect: TransitionEffect
+var _is_preparing := false
 
 
-## 画面を覆う。[br]
-## [param transition_id]: 遷移エフェクトのID[br]
-## [param duration]: 演出の秒数
-func fade_in(
-		transition_id: StringName,
-		duration: float,
-) -> void:
-	if not _try_apply_transition(transition_id):
-		return
-
-	_transition_rect.show()
-	_transition_rect.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	await _animate(0.0, 1.0, duration)
-
-
-## 画面を表示状態へ戻す。[br]
-## [param transition_id]: 遷移エフェクトのID[br]
-## [param duration]: 演出の秒数
-func fade_out(
-		transition_id: StringName,
-		duration: float,
-) -> void:
-	if not _try_apply_transition(transition_id):
-		return
-
-	await _animate(1.0, 0.0, duration)
-
-	_transition_rect.hide()
-	_transition_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-
-func _try_apply_transition(transition_id: StringName) -> bool:
-	var entry := _transition_registry.get_entry(transition_id)
-
-	if entry == null:
+## 演出を非同期で読み込み、表示前に構成を検証する。[br]
+## [param transition_reference]: 遷移エフェクトのシーンのUIDまたはパス
+func prepare_async(transition_reference: String) -> bool:
+	if _is_preparing or _effect != null or not is_instance_valid(_input_blocker):
 		return false
 
-	_transition_rect.color = entry.color
-	_material.set_shader_parameter(
-			TEXTURE_PARAMETER,
-			entry.transition_texture,
-	)
+	_is_preparing = true
+	_effect = await _instantiate_effect_async(transition_reference)
+	_is_preparing = false
+	if _effect == null:
+		return false
 
+	_input_blocker.add_child(_effect)
 	return true
 
 
-func _animate(
-		from_value: float,
-		to_value: float,
-		duration: float
-) -> void:
-	_set_value(from_value)
+## 入力を遮断し、準備した演出で画面を覆う。
+func cover_async() -> void:
+	_input_blocker.show()
+	await _effect.cover_async()
 
-	if duration <= 0.0:
-		_set_value(to_value)
+
+## 同じ演出インスタンスで画面を表示状態へ戻す。
+func reveal_async() -> void:
+	await _effect.reveal_async()
+
+
+## 入力遮断を解除し、この要求で使用した演出を解放する。
+func finish() -> void:
+	if _effect == null:
 		return
-
-	var tween := create_tween()
-	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	tween.tween_method(
-			_set_value,
-			from_value,
-			to_value,
-			duration
-	)
-
-	await tween.finished
+	_input_blocker.hide()
+	_input_blocker.remove_child(_effect)
+	_effect.queue_free()
+	_effect = null
 
 
-func _set_value(value: float) -> void:
-	_material.set_shader_parameter(
-			VALUE_PARAMETER,
-			clampf(value, 0.0, 1.0),
-	)
+## 指定した演出シーンを生成し、再生可能な場合はインスタンスを返す。[br]
+## [param transition_reference]: 遷移エフェクトのシーンのUIDまたはパス
+func _instantiate_effect_async(transition_reference: String) -> TransitionEffect:
+	var request := AsyncResourceLoadRequest.new(transition_reference)
+	var loaded_resource := await request.get_resource_async()
+	if loaded_resource == null:
+		push_error(request.format_error())
+		return null
+
+	var packed_scene := loaded_resource as PackedScene
+	if packed_scene == null:
+		push_error("遷移エフェクトがPackedSceneではありません: %s" % transition_reference)
+		return null
+
+	var instance := packed_scene.instantiate()
+	if instance == null:
+		push_error("遷移エフェクトのシーンを生成できませんでした: %s" % transition_reference)
+		return null
+
+	instance.process_mode = Node.PROCESS_MODE_ALWAYS
+	var effect := instance as TransitionEffect
+	if effect == null or not effect.is_configured():
+		instance.free()
+		push_error("遷移エフェクトのルートの型または設定が不正です: %s" % transition_reference)
+		return null
+	return effect
