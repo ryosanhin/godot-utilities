@@ -123,8 +123,8 @@ func _test_failed_change(scene_reference: String, expected_result: SceneControll
 			func(_reference: String) -> void: effects.append(blocker.get_child(0)),
 			CONNECT_ONE_SHOT,
 	)
-	controller.scene_replaced.connect(func(_reference: String) -> void: success_events.append("replaced"))
-	controller.scene_changed.connect(func(_reference: String) -> void: success_events.append("changed"))
+	controller.main_scene_added.connect(func(_reference: String) -> void: success_events.append("replaced"))
+	controller.scene_change_completed.connect(func(_reference: String) -> void: success_events.append("changed"))
 
 	var result := await controller.change_main_scene_async(scene_reference, TEST_EFFECT_PATH)
 	_helper.assert_equal(result, expected_result, "失敗の種類に応じた結果を返す")
@@ -177,7 +177,7 @@ func _test_paused_circle_fade() -> void:
 								_helper.assert_true(blocker.visible, "画面を覆い始める時点で入力遮断を表示する")
 				)
 	)
-	controller.scene_replaced.connect(
+	controller.main_scene_added.connect(
 			func(reference: String) -> void:
 				events.append("replaced")
 				_helper.assert_equal(reference, SCENE_A_PATH, "差し替え通知は正規化したシーン参照を渡す")
@@ -186,7 +186,7 @@ func _test_paused_circle_fade() -> void:
 				_helper.assert_same(blocker.get_child(0), effects[0], "同じ円形フェードのインスタンスを使う")
 				_helper.assert_equal(_get_circle_fade_value(effects[0]), 1.0, "画面を完全に覆った後で差し替える")
 	)
-	controller.scene_changed.connect(
+	controller.scene_change_completed.connect(
 			func(reference: String) -> void:
 				events.append("changed")
 				_helper.assert_equal(reference, SCENE_A_PATH, "完了通知は正規化したシーン参照を渡す")

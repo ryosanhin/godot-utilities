@@ -5,9 +5,9 @@ extends Node
 signal scene_change_started(scene_reference: String)
 ## 新シーンを追加した後、画面を戻す演出の前に通知する。
 ## シーン独自の非同期初期化や受信側の非同期処理の完了は待たない。
-signal scene_replaced(scene_reference: String)
+signal main_scene_added(scene_reference: String)
 ## 画面を戻し、演出と入力遮断を片付けた後に通知する。
-signal scene_changed(scene_reference: String)
+signal scene_change_completed(scene_reference: String)
 
 ## シーン切り替え要求の結果。
 enum ChangeResult {
@@ -80,18 +80,18 @@ func change_main_scene_async(
 	await _transition_controller.cover_async()
 
 	var next_scene := await _instantiate_scene_async(scene_path)
-	var did_replace := next_scene != null
-	if did_replace:
+	var is_replaceable := next_scene != null
+	if is_replaceable:
 		_replace_main_scene(scene_path, next_scene)
-		scene_replaced.emit(scene_path)
+		main_scene_added.emit(scene_path)
 
 	await _transition_controller.reveal_async()
 	_transition_controller.finish()
 	is_changing = false
 
-	if not did_replace:
+	if not is_replaceable:
 		return ChangeResult.LOAD_FAILED
-	scene_changed.emit(scene_path)
+	scene_change_completed.emit(scene_path)
 	return ChangeResult.SUCCESS
 
 
