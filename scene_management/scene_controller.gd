@@ -19,9 +19,6 @@ enum ChangeResult {
 	TRANSITION_PREPARATION_FAILED,
 }
 
-const AsyncResourceLoadRequest := preload(
-		"res://async_resource_load_request/async_resource_load_request.gd"
-)
 const TransitionController := preload("transition_management/transition_controller.gd")
 
 @export var _transition_controller: TransitionController

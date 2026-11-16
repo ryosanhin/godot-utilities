@@ -1,9 +1,6 @@
 extends CanvasLayer
 ## 画面切り替えごとに演出を準備し、再生中のマウス入力を遮断する。
 
-const AsyncResourceLoadRequest := preload(
-		"res://async_resource_load_request/async_resource_load_request.gd"
-)
 const TransitionEffect := preload("transition_effect.gd")
 
 @export var _input_blocker: Control

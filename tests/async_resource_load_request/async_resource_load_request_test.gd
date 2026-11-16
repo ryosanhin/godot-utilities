@@ -1,7 +1,6 @@
 extends SceneTree
 
 const TestHelper := preload("res://tests/supports/test_helper.gd")
-const Loader := preload("res://async_resource_load_request/async_resource_load_request.gd")
 
 const SCENE_UID := "uid://cclwwdo81dta1"
 const SCENE_PATH := "res://tests/async_resource_load_request/fixtures/example.tscn"
@@ -40,7 +39,7 @@ class PendingResourceLoader extends ResourceFormatLoader:
 
 
 class OwnerNode extends Node:
-	func wait_for_resource(request: Loader, resumptions: Array[bool]) -> void:
+	func wait_for_resource(request: AsyncResourceLoadRequest, resumptions: Array[bool]) -> void:
 		await request.get_resource_async()
 		resumptions.append(true)
 
@@ -66,19 +65,19 @@ func _test_resolve_resource_path() -> void:
 	]
 	for path in equivalent_paths:
 		_helper.assert_equal(
-				Loader.resolve_resource_path(path),
+				AsyncResourceLoadRequest.resolve_resource_path(path),
 				SCENE_PATH,
 				"同じリソースのパスに解決する (%s)" % path,
 		)
-	_helper.assert_equal(Loader.resolve_resource_path("user://example.tres"), "", "user:// は対象外")
+	_helper.assert_equal(AsyncResourceLoadRequest.resolve_resource_path("user://example.tres"), "", "user:// は対象外")
 	_helper.assert_equal(
-			Loader.resolve_resource_path("res://fixtures/../../example.tres"),
+			AsyncResourceLoadRequest.resolve_resource_path("res://fixtures/../../example.tres"),
 			"",
 			"プロジェクトのルートより上を指すパスは対象外",
 	)
 	var external_path := ProjectSettings.globalize_path("res://").path_join("../example.tres")
 	_helper.assert_equal(
-			Loader.resolve_resource_path(external_path),
+			AsyncResourceLoadRequest.resolve_resource_path(external_path),
 			"",
 			"プロジェクト外の絶対パスは対象外",
 	)
@@ -89,19 +88,19 @@ func _test_load() -> void:
 	_helper.change_test_name("async_resource_load")
 
 	# シーンの読み込み
-	var scene := Loader.new(SCENE_UID)
+	var scene := AsyncResourceLoadRequest.new(SCENE_UID)
 	var packed_scene := (await scene.get_resource_async()) as PackedScene
 	_helper.assert_true(packed_scene != null, "UIDからPackedSceneを取得できる")
 	_helper.assert_same(await scene.get_resource_async(), packed_scene, "完了済みなら同じリソースを返す")
 	_helper.assert_true(scene.is_successful(), "読み込み成功を判別できる")
-	_helper.assert_equal(scene.error_code, Loader.ErrorCode.OK, "成功コードを返す")
+	_helper.assert_equal(scene.error_code, AsyncResourceLoadRequest.ErrorCode.OK, "成功コードを返す")
 	_helper.assert_equal(scene.resource_path, SCENE_PATH, "解決した res:// パスを保持する")
 
 	# 存在しないUIDを指定したとき
-	var invalid := Loader.new("uid://invalid")
+	var invalid := AsyncResourceLoadRequest.new("uid://invalid")
 	_helper.assert_equal(
 			invalid.error_code,
-			Loader.ErrorCode.INVALID_REFERENCE,
+			AsyncResourceLoadRequest.ErrorCode.INVALID_REFERENCE,
 			"無効なUIDは参照エラーとして返す",
 	)
 	_helper.assert_equal(invalid.resource_path, "", "解決できない場合はパスを持たない")
@@ -109,25 +108,25 @@ func _test_load() -> void:
 
 	# 存在しないUIDを指定したとき
 	var unknown_uid := ResourceUID.create_id()
-	var unknown := Loader.new(ResourceUID.id_to_text(unknown_uid))
+	var unknown := AsyncResourceLoadRequest.new(ResourceUID.id_to_text(unknown_uid))
 	_helper.assert_equal(
 			unknown.error_code,
-			Loader.ErrorCode.INVALID_REFERENCE,
+			AsyncResourceLoadRequest.ErrorCode.INVALID_REFERENCE,
 			"未登録のUIDも参照エラーとして返す",
 	)
 
 	# シーン以外のResourceの取得
-	var resource_request := Loader.new(RESOURCE_PATH)
+	var resource_request := AsyncResourceLoadRequest.new(RESOURCE_PATH)
 	var non_scene := await resource_request.get_resource_async()
 	_helper.assert_true(non_scene != null, "シーン以外のResourceも取得できる")
 	_helper.assert_true(resource_request.is_successful(), "シーン以外のResourceも読み込み成功として扱う")
 	_helper.assert_null(non_scene as PackedScene, "シーン以外のResourceはPackedSceneにキャストできない")
 
 	# 存在しないResouceの取得
-	var missing := Loader.new(MISSING_RESOURCE_PATH.trim_prefix("res://"))
+	var missing := AsyncResourceLoadRequest.new(MISSING_RESOURCE_PATH.trim_prefix("res://"))
 	_helper.assert_equal(
 			missing.error_code,
-			Loader.ErrorCode.INVALID_REFERENCE,
+			AsyncResourceLoadRequest.ErrorCode.INVALID_REFERENCE,
 			"存在しないパスも参照エラーとして返す",
 	)
 	_helper.assert_false(missing.is_successful(), "失敗結果を判別できる")
@@ -143,15 +142,15 @@ func _test_load() -> void:
 	)
 
 	# 空の参照もエラーとして扱う
-	var empty := Loader.new("")
+	var empty := AsyncResourceLoadRequest.new("")
 	_helper.assert_true(empty.is_completed(), "即時失敗でも完了状態を保持する")
 	_helper.assert_null(await empty.get_resource_async(), "即時失敗時はnullを返す")
-	_helper.assert_equal(empty.error_code, Loader.ErrorCode.INVALID_REFERENCE, "空の参照も参照エラーとして返す")
+	_helper.assert_equal(empty.error_code, AsyncResourceLoadRequest.ErrorCode.INVALID_REFERENCE, "空の参照も参照エラーとして返す")
 
 	# 構文が壊れたResourceを指定した場合
-	var failed := Loader.new(MALFORMED_RESOURCE_PATH)
+	var failed := AsyncResourceLoadRequest.new(MALFORMED_RESOURCE_PATH)
 	_helper.assert_null(await failed.get_resource_async(), "読み込み失敗時はnullを返す")
-	_helper.assert_equal(failed.error_code, Loader.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
+	_helper.assert_equal(failed.error_code, AsyncResourceLoadRequest.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
 	_helper.assert_null(failed.resource, "読み込み失敗時もResourceを持たない")
 	_helper.assert_equal(
 			ResourceLoader.load_threaded_get_status(MALFORMED_RESOURCE_PATH),
@@ -166,7 +165,7 @@ func _test_release_pending_request() -> void:
 	var format_loader := PendingResourceLoader.new()
 	ResourceLoader.add_resource_format_loader(format_loader)
 	var path := PendingResourceLoader.PATH
-	var request := Loader.new(path)
+	var request := AsyncResourceLoadRequest.new(path)
 	_helper.assert_false(request.is_completed(), "生成直後のリクエストは未完了")
 	_helper.assert_equal(
 			ResourceLoader.load_threaded_get_status(path),
@@ -207,14 +206,14 @@ func _test_release_owner_node() -> void:
 	ResourceLoader.add_resource_format_loader(format_loader)
 
 	var path := PendingResourceLoader.PATH
-	var request := Loader.new(path)
+	var request := AsyncResourceLoadRequest.new(path)
 	var request_ref: WeakRef = weakref(request)
 	var resource_refs: Array[WeakRef] = []
 	var resumptions: Array[bool] = []
 
 	request.completed.connect(
 			func() -> void:
-				var finished := request_ref.get_ref() as Loader
+				var finished := request_ref.get_ref() as AsyncResourceLoadRequest
 				if finished != null and finished.resource != null:
 					resource_refs.append(weakref(finished.resource)),
 			CONNECT_ONE_SHOT,
