@@ -246,7 +246,7 @@ func _create_controller(initial_scene_path := "") -> SceneController:
 ## [param controller]: 検証対象[br]
 ## [param scene_path]: 期待するシーンの正規化パス
 func _assert_current_scene(controller: SceneController, scene_path: String) -> void:
-	_helper.assert_equal(controller.current_main_scene_path, scene_path, "現在シーンの正規化したパスを公開する")
+	_helper.assert_equal(controller.get_current_main_scene_path(), scene_path, "現在シーンの正規化したパスを公開する")
 	var scenes_root := controller._main_scenes_root
 	_helper.assert_equal(scenes_root.get_child_count(), 1, "専用ルートには現在のシーンだけを置く")
 	if scenes_root.get_child_count() == 1:

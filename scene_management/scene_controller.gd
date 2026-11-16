@@ -16,6 +16,7 @@ enum ChangeResult {
 	ALREADY_CURRENT,
 	INVALID_SCENE,
 	LOAD_FAILED,
+	ADD_FAILED,
 	TRANSITION_PREPARATION_FAILED,
 }
 
@@ -25,16 +26,12 @@ const TransitionController := preload("transition_management/transition_controll
 ## 交換対象のシーンだけを子に配置する専用ルート。
 @export var _main_scenes_root: Node
 
-## 現在のメインシーンの正規化したパス。まだシーンがなければ空文字列。
-var current_main_scene_path: String
 var is_changing := false
 
 
-func _ready() -> void:
-	if is_instance_valid(_main_scenes_root) and _main_scenes_root.get_child_count() > 0:
-		current_main_scene_path = AsyncResourceLoadRequest.resolve_resource_path(
-				_main_scenes_root.get_child(0).scene_file_path
-		)
+func get_current_main_scene_path() -> String:
+	var current_main_scene := _main_scenes_root.get_child(0)
+	return current_main_scene.scene_file_path
 
 
 ## 専用ルートに指定したシーンが配置されているか。[br]
@@ -63,7 +60,7 @@ func change_main_scene_async(
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
 	if scene_path.is_empty() or not is_instance_valid(_main_scenes_root):
 		return ChangeResult.INVALID_SCENE
-	if scene_path == current_main_scene_path:
+	if scene_path == get_current_main_scene_path():
 		return ChangeResult.ALREADY_CURRENT
 	if not is_instance_valid(_transition_controller):
 		return ChangeResult.TRANSITION_PREPARATION_FAILED
@@ -79,7 +76,10 @@ func change_main_scene_async(
 	var next_scene := await _instantiate_scene_async(scene_path)
 	var is_replaceable := next_scene != null
 	if is_replaceable:
-		_replace_main_scene(scene_path, next_scene)
+		_replace_main_scene(next_scene)
+	
+	var is_replaced := get_current_main_scene_path() == scene_path
+	if is_replaced:
 		main_scene_added.emit(scene_path)
 
 	await _transition_controller.reveal_async()
@@ -88,6 +88,10 @@ func change_main_scene_async(
 
 	if not is_replaceable:
 		return ChangeResult.LOAD_FAILED
+
+	if not is_replaced:
+		return ChangeResult.ADD_FAILED
+
 	scene_change_completed.emit(scene_path)
 	return ChangeResult.SUCCESS
 
@@ -113,12 +117,9 @@ func _instantiate_scene_async(scene_path: String) -> Node:
 
 
 ## 旧シーンを専用ルートから外して解放し、新シーンを追加する。[br]
-## [param scene_path]: 切り替え先のシーンのパス[br]
 ## [param next_scene]: 切り替え先のノード
-func _replace_main_scene(scene_path: String, next_scene: Node) -> void:
+func _replace_main_scene(next_scene: Node) -> void:
 	for current_scene in _main_scenes_root.get_children():
 		_main_scenes_root.remove_child(current_scene)
 		current_scene.queue_free()
-
-	current_main_scene_path = scene_path
 	_main_scenes_root.add_child(next_scene)
