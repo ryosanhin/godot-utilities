@@ -89,7 +89,6 @@ func change_main_scene_async(
 	# 正常に置換が成功した場合。
 	if is_replaced:
 		main_scene_added.emit(scene_path)
-		_delete_former_scenes(next_scene)
 	elif is_replaceable and is_instance_valid(next_scene):
 		# 置換先ノードの生成はできたけど、置換に失敗した場合。
 		next_scene.queue_free()
@@ -140,18 +139,20 @@ func _try_replace_main_scene(next_scene: Node) -> bool:
 	):
 		return false
 
+	var former_scenes := _main_scenes_root.get_children()
+
 	scenes_root.add_child(next_scene)
 
-	return (
+	# 正常に追加ができているか確認する。
+	var is_added := (
 			is_instance_valid(next_scene)
 			and next_scene.is_inside_tree()
 			and next_scene.get_parent() == scenes_root
 	)
 
+	if is_added:
+		for former_scene in former_scenes:
+			scenes_root.remove_child(former_scene)
+			former_scene.queue_free()
 
-## 新しく追加したシーン以外を削除する。[br]
-## [param next_scene]: 新しく追加したシーン
-func _delete_former_scenes(next_scene: Node) -> void:
-	for scene in _main_scenes_root.get_children():
-		if scene != next_scene:
-			scene.queue_free()
+	return true
