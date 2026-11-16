@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cjpno3mma0auk"]
 
-[ext_resource type="Script" uid="uid://h4y2k73uxths" path="res://scene_management/transition_management/transition_controller.gd" id="1_jfpap"]
+[ext_resource type="Script" uid="uid://h4y2k73uxths" path="res://transition_management/transition_controller.gd" id="1_jfpap"]
 
 [node name="TransitionController" type="CanvasLayer" unique_id=1857992624 node_paths=PackedStringArray("_input_blocker")]
 process_mode = 3

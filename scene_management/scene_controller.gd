@@ -20,7 +20,7 @@ enum ChangeResult {
 	TRANSITION_PREPARATION_FAILED,
 }
 
-const TransitionController := preload("transition_management/transition_controller.gd")
+const TransitionController := preload("res://transition_management/transition_controller.gd")
 
 @export var _transition_controller: TransitionController
 ## 交換対象のシーンだけを子に配置する専用ルート。

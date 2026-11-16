@@ -1,4 +1,4 @@
-extends "res://scene_management/transition_management/transition_effect.gd"
+extends "res://transition_management/transition_effect.gd"
 
 enum Phase {
 	PREPARED,

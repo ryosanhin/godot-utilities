@@ -4,7 +4,7 @@
 
 ## 設定
 
-1. `scene_management/`と`async_resource_load_request/`をプロジェクト直下へ配置します。
+1. `scene_management/`と`async_resource_load_request/`、`transition_management/`をプロジェクト直下へ配置します。
 2. `scene_controller.tscn`を、切り替え時にも残るシーンにインスタンス化します。子の`TransitionController`は付属シーンで設定済みです。
 3. 交換対象のシーンを子に持つNodeを用意し、`_main_scenes_root`へ設定します。コントローラーは交換対象の配下から外して配置します。
 4. 初期シーンがある場合は、起動前に専用ルートの子としてシーンをインスタンス化します。
@@ -57,4 +57,4 @@ func open_main_async(controller: SceneController) -> void:
 
 ## 演出の作成
 
-付属の円形フェードの調整や独自の演出の作成方法は[画面切り替え演出](transition_management/README.md)を参照してください。
+付属の円形フェードの調整や独自の演出の作成方法は[画面切り替え演出](../transition_management/README.md)を参照してください。

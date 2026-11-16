@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dsa1axpkvfqo0"]
 
-[ext_resource type="Script" path="res://scene_management/transition_management/transition_effect.gd" id="1_effect"]
-[ext_resource type="Shader" uid="uid://crjxmgarmv78q" path="res://scene_management/transition_management/assets/transition_shader.tres" id="2_shader"]
-[ext_resource type="Texture2D" uid="uid://c14i4vs26keos" path="res://scene_management/transition_management/assets/circle_fade.png" id="3_mask"]
+[ext_resource type="Script" uid="uid://dv0yq07e3f4n1" path="res://transition_management/transition_effect.gd" id="1_effect"]
+[ext_resource type="Shader" uid="uid://crjxmgarmv78q" path="res://transition_management/assets/transition_shader.tres" id="2_shader"]
+[ext_resource type="Texture2D" uid="uid://c14i4vs26keos" path="res://transition_management/assets/circle_fade.png" id="3_mask"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_circle"]
 resource_local_to_scene = true
