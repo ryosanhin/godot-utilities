@@ -1,3 +1,4 @@
+class_name AsyncResourceLoadRequest
 extends RefCounted
 ## 1件の非同期読み込み処理と、その完了状態・結果。
 
