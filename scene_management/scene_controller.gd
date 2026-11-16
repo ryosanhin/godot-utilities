@@ -30,6 +30,9 @@ var is_changing := false
 
 
 func get_current_main_scene_path() -> String:
+	if not is_instance_valid(_main_scenes_root):
+		push_error("メインシーン専用ルートが存在しません。")
+		return ""
 	if _main_scenes_root.get_child_count() == 0:
 		return ""
 	var current_main_scene := _main_scenes_root.get_child(0)
@@ -72,20 +75,26 @@ func change_main_scene_async(
 		is_changing = false
 		return ChangeResult.TRANSITION_PREPARATION_FAILED
 
+	# 暗幕を掛け、シーン置換開始。
 	scene_change_started.emit(scene_path)
 	await _transition_controller.cover_async()
 
+	# 置換先シーンのインスタンス化。
 	var next_scene := await _instantiate_scene_async(scene_path)
 	var is_replaceable := next_scene != null
 	var is_replaced := false
 	if is_replaceable:
 		is_replaced = _try_replace_main_scene(next_scene)
 
+	# 正常に置換が成功した場合。
 	if is_replaced:
 		main_scene_added.emit(scene_path)
+		_delete_former_scenes(next_scene)
 	elif is_replaceable and is_instance_valid(next_scene):
+		# 置換先ノードの生成はできたけど、置換に失敗した場合。
 		next_scene.queue_free()
 
+	# 暗幕除去。
 	await _transition_controller.reveal_async()
 	_transition_controller.finish()
 	is_changing = false
@@ -131,9 +140,6 @@ func _try_replace_main_scene(next_scene: Node) -> bool:
 	):
 		return false
 
-	for current_scene in scenes_root.get_children():
-		scenes_root.remove_child(current_scene)
-		current_scene.queue_free()
 	scenes_root.add_child(next_scene)
 
 	return (
@@ -141,3 +147,11 @@ func _try_replace_main_scene(next_scene: Node) -> bool:
 			and next_scene.is_inside_tree()
 			and next_scene.get_parent() == scenes_root
 	)
+
+
+## 新しく追加したシーン以外を削除する。[br]
+## [param next_scene]: 新しく追加したシーン
+func _delete_former_scenes(next_scene: Node) -> void:
+	for scene in _main_scenes_root.get_children():
+		if scene != next_scene:
+			scene.queue_free()
