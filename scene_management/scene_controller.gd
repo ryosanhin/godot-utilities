@@ -80,9 +80,11 @@ func change_main_scene_async(
 	var is_replaced := false
 	if is_replaceable:
 		is_replaced = _try_replace_main_scene(next_scene)
-	
+
 	if is_replaced:
 		main_scene_added.emit(scene_path)
+	elif is_replaceable and is_instance_valid(next_scene):
+		next_scene.queue_free()
 
 	await _transition_controller.reveal_async()
 	_transition_controller.finish()
@@ -121,15 +123,21 @@ func _instantiate_scene_async(scene_path: String) -> Node:
 ## 旧シーンを専用ルートから外して解放し、新シーンを追加する。[br]
 ## [param next_scene]: 切り替え先のノード
 func _try_replace_main_scene(next_scene: Node) -> bool:
-	for current_scene in _main_scenes_root.get_children():
-		_main_scenes_root.remove_child(current_scene)
-		current_scene.queue_free()
-	_main_scenes_root.add_child(next_scene)
-
+	var scenes_root := _main_scenes_root
 	if (
-			next_scene.is_inside_tree()
-			and next_scene.get_parent() == _main_scenes_root
+			not is_instance_valid(scenes_root)
+			or not scenes_root.is_inside_tree()
+			or scenes_root.is_queued_for_deletion()
 	):
-		return true
+		return false
 
-	return false
+	for current_scene in scenes_root.get_children():
+		scenes_root.remove_child(current_scene)
+		current_scene.queue_free()
+	scenes_root.add_child(next_scene)
+
+	return (
+			is_instance_valid(next_scene)
+			and next_scene.is_inside_tree()
+			and next_scene.get_parent() == scenes_root
+	)
