@@ -29,7 +29,7 @@ func is_configured() -> bool:
 		if not _animation_player.has_animation(animation_name):
 			return false
 		var animation := _animation_player.get_animation(animation_name)
-		if animation.loop_mode != Animation.LOOP_NONE or animation.length <= 0.0:
+		if animation.loop_mode != Animation.LOOP_NONE:
 			return false
 	return true
 
