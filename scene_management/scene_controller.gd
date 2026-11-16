@@ -155,4 +155,4 @@ func _try_replace_main_scene(next_scene: Node) -> bool:
 			scenes_root.remove_child(former_scene)
 			former_scene.queue_free()
 
-	return true
+	return is_added
