@@ -5,7 +5,7 @@
 > **ノードの寿命と配置**
 > `_input_blocker` はエディターで事前に設定してください。付属の `transition_controller.tscn` では設定済みです。`TransitionController` の `_ready()` で設定と配置を確認し、不備は `push_error()` で報告します。設定が揃った状態で `_ready()` を終えてから `prepare_async()` を呼び出してください。
 >
-> 利用中は入力遮断ノードを同じ配置で維持してください。演出のルートは `TransitionController` が追加・解放します。演出に設定した `AnimationPlayer` は、その演出が使われている間、同じ配置で維持してください。
+> 利用中は設定したノードを解放せず、入力遮断ノードは対象画面を覆うように配置してください。演出のルートは `TransitionController` が追加・解放します。演出に設定した `AnimationPlayer` は、その演出が使われている間、同じ配置で維持してください。
 
 ## AnimationPlayerで演出を作る
 
