@@ -66,50 +66,61 @@ func change_main_scene_async(
 		scene_reference: String,
 		transition_reference: String,
 ) -> ChangeResult:
+	# 進行中の切り替えと重なる要求を拒否する。
 	if is_changing:
 		return ChangeResult.BUSY
 
+	# 切り替え先の参照を解決し、現在のシーンと比較する。
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
 	if scene_path.is_empty():
 		return ChangeResult.INVALID_SCENE
 	if scene_path == get_current_main_scene_path():
 		return ChangeResult.ALREADY_CURRENT
+
+	# 切り替え中として扱い、画面遷移の演出を準備する。
 	is_changing = true
 	if not await _transition_controller.prepare_async(transition_reference):
 		is_changing = false
 		return ChangeResult.TRANSITION_PREPARATION_FAILED
 
-	# 暗幕を掛け、シーン置換開始。
+	# 切り替えの開始を通知し、画面を覆う。
 	scene_change_started.emit(scene_path)
 	await _transition_controller.cover_async()
 
-	# 置換先シーンのインスタンス化。
-	var next_scene := await _instantiate_scene_async(scene_path)
-	var is_replaceable := next_scene != null
-	var is_replaced := false
-	if is_replaceable:
-		is_replaced = _try_replace_main_scene(next_scene)
+	# 画面を覆っている間にシーンを差し替える。
+	var result := await _replace_main_scene_async(scene_path)
 
-	# 正常に置換が成功した場合。
-	if is_replaced:
+	# 差し替えに成功した場合は、画面を戻す前に新シーンの追加を通知する。
+	if result == ChangeResult.SUCCESS:
 		main_scene_added.emit(scene_path)
-	elif is_replaceable and is_instance_valid(next_scene):
-		# 置換先ノードの生成はできたけど、置換に失敗した場合。
-		next_scene.queue_free()
 
-	# 暗幕除去。
+	# 差し替えの結果にかかわらず、画面を戻し、演出と入力遮断を片付ける。
 	await _transition_controller.reveal_async()
 	_transition_controller.finish()
 	is_changing = false
 
-	if not is_replaceable:
+	# 片付けを終えたら、成功時は完了を通知し、差し替え結果を返す。
+	if result == ChangeResult.SUCCESS:
+		scene_change_completed.emit(scene_path)
+	return result
+
+
+## 新シーンを読み込んで差し替え、その結果を返す。[br]
+## [param scene_path]: 切り替え先のシーンのパス
+func _replace_main_scene_async(scene_path: String) -> ChangeResult:
+	# リソースを読み込み、新シーンのノードを生成する。
+	var next_scene := await _instantiate_scene_async(scene_path)
+	if next_scene == null:
 		return ChangeResult.LOAD_FAILED
 
-	if not is_replaced:
-		return ChangeResult.ADD_FAILED
+	# 新シーンを追加できた場合に旧シーンを外す。
+	if _try_replace_main_scene(next_scene):
+		return ChangeResult.SUCCESS
 
-	scene_change_completed.emit(scene_path)
-	return ChangeResult.SUCCESS
+	# 追加に失敗した場合は、生成したノードが残っていれば解放を予約する。
+	if is_instance_valid(next_scene):
+		next_scene.queue_free()
+	return ChangeResult.ADD_FAILED
 
 
 ## シーンをバックグラウンドで読み込み、切り替え先のノードを生成する。[br]
@@ -138,6 +149,7 @@ func _try_replace_main_scene(next_scene: Node) -> bool:
 	var scenes_root := _main_scene_parent
 	var former_scenes := scenes_root.get_children()
 
+	# 追加に失敗したときに旧シーンを残せるよう、新シーンの追加を先に確認する。
 	scenes_root.add_child(next_scene)
 	if not is_instance_valid(next_scene) or next_scene.get_parent() != scenes_root:
 		return false
