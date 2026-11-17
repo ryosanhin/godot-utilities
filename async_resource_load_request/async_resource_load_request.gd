@@ -14,8 +14,8 @@ enum ErrorCode {
 	SCENE_TREE_UNAVAILABLE,
 }
 
-var error_code: ErrorCode = ErrorCode.OK
-var resource: Resource
+var _error_code: ErrorCode = ErrorCode.OK
+var _resource: Resource
 ## 正規化した res:// パス。入力をパスに解決できなかった場合は空文字列。
 var resource_path: String:
 	get:
@@ -34,7 +34,7 @@ var _is_completed := false
 func _init(resource_reference: String) -> void:
 	_resource_path = resolve_resource_path(resource_reference)
 	if _resource_path.is_empty():
-		error_code = ErrorCode.INVALID_REFERENCE
+		_error_code = ErrorCode.INVALID_REFERENCE
 		_unresolved_reference_error = (
 				'リソース参照をプロジェクト内のパスに解決できませんでした: "%s"'
 				% resource_reference
@@ -73,7 +73,7 @@ func get_resource_async() -> Resource:
 		await completed
 	if not is_successful():
 		return null
-	return resource
+	return _resource
 
 
 ## 読み込みが成功または失敗で完了したか。
@@ -83,12 +83,22 @@ func is_completed() -> bool:
 
 ## 読み込みが完了し、成功したか。
 func is_successful() -> bool:
-	return _is_completed and error_code == ErrorCode.OK
+	return _is_completed and _error_code == ErrorCode.OK
+
+
+## エラーコードを取得する。
+func get_error_code() -> ErrorCode:
+	return _error_code
+
+
+## 読み込まれたリソースを取得する。
+func get_loaded_resource() -> Resource:
+	return _resource
 
 
 ## 読み込み結果を人間向けの説明文へ変換する。
 func format_error() -> String:
-	match error_code:
+	match _error_code:
 		ErrorCode.OK:
 			return ""
 		ErrorCode.INVALID_REFERENCE:
@@ -111,19 +121,19 @@ func format_error() -> String:
 ## リクエスト生成時に一度だけ呼び出す。
 func _load_resource_async() -> void:
 	if not ResourceLoader.exists(_resource_path):
-		error_code = ErrorCode.INVALID_REFERENCE
+		_error_code = ErrorCode.INVALID_REFERENCE
 		_complete()
 		return
 
 	var scene_tree := Engine.get_main_loop() as SceneTree
 	if scene_tree == null:
-		error_code = ErrorCode.SCENE_TREE_UNAVAILABLE
+		_error_code = ErrorCode.SCENE_TREE_UNAVAILABLE
 		_complete()
 		return
 
 	request_error = ResourceLoader.load_threaded_request(_resource_path)
 	if request_error != OK:
-		error_code = ErrorCode.REQUEST_FAILED
+		_error_code = ErrorCode.REQUEST_FAILED
 		_complete()
 		return
 
@@ -147,13 +157,13 @@ func _check_load_status(scene_tree: SceneTree) -> void:
 	var loaded_resource := ResourceLoader.load_threaded_get(_resource_path)
 	match status:
 		ResourceLoader.THREAD_LOAD_LOADED:
-			resource = loaded_resource
-			if resource == null:
-				error_code = ErrorCode.LOAD_FAILED
+			_resource = loaded_resource
+			if _resource == null:
+				_error_code = ErrorCode.LOAD_FAILED
 		ResourceLoader.THREAD_LOAD_FAILED:
-			error_code = ErrorCode.LOAD_FAILED
+			_error_code = ErrorCode.LOAD_FAILED
 		_:
-			error_code = ErrorCode.INVALID_REQUEST
+			_error_code = ErrorCode.INVALID_REQUEST
 	_complete()
 
 
