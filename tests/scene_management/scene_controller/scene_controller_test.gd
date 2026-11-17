@@ -29,8 +29,6 @@ func _run_tests() -> void:
 	await _test_failed_change("", SceneController.ChangeResult.INVALID_SCENE)
 	await _test_failed_change(MISSING_SCENE_PATH, SceneController.ChangeResult.LOAD_FAILED)
 	await _test_failed_change(NON_SCENE_PATH, SceneController.ChangeResult.LOAD_FAILED)
-	await _test_unavailable_scenes_root(false)
-	await _test_unavailable_scenes_root(true)
 	await _test_paused_circle_fade()
 	await _helper.finish(self, "scene_controller")
 
@@ -39,7 +37,7 @@ func _run_tests() -> void:
 func _test_scene_replacement() -> void:
 	_helper.change_test_name("scene_replacement")
 	var controller := _create_controller()
-	var scenes_root := controller._main_scenes_root
+	var scenes_root := controller._main_scene_parent
 
 	for reference: String in [SCENE_A_UID, SCENE_B_PATH, SCENE_A_PATH]:
 		var old_scene := scenes_root.get_child(0) if scenes_root.get_child_count() > 0 else null
@@ -84,7 +82,7 @@ func _test_same_scene() -> void:
 func _test_transition_preparation_failure() -> void:
 	_helper.change_test_name("transition_preparation_failure")
 	var controller := _create_controller(SCENE_B_PATH)
-	var old_scene := controller._main_scenes_root.get_child(0)
+	var old_scene := controller._main_scene_parent.get_child(0)
 	var blocker := controller._transition_controller._input_blocker
 	var events: Array[String] = []
 	controller.scene_change_started.connect(func(_reference: String) -> void: events.append("started"))
@@ -100,7 +98,7 @@ func _test_transition_preparation_failure() -> void:
 				SceneController.ChangeResult.TRANSITION_PREPARATION_FAILED,
 				"演出の準備失敗を判別できる",
 		)
-		_helper.assert_same(controller._main_scenes_root.get_child(0), old_scene, "旧シーンを維持する")
+		_helper.assert_same(controller._main_scene_parent.get_child(0), old_scene, "旧シーンを維持する")
 		_assert_idle(controller)
 	_helper.assert_array(events, [], "不正な演出は配置・表示せず、開始通知も出さない")
 
@@ -116,7 +114,7 @@ func _test_transition_preparation_failure() -> void:
 func _test_failed_change(scene_reference: String, expected_result: SceneController.ChangeResult) -> void:
 	_helper.change_test_name("failed_change (%s)" % scene_reference)
 	var controller := _create_controller(SCENE_B_PATH)
-	var scenes_root := controller._main_scenes_root
+	var scenes_root := controller._main_scene_parent
 	var old_scene := scenes_root.get_child(0)
 	var blocker := controller._transition_controller._input_blocker
 	var effects: Array[TestEffect] = []
@@ -152,42 +150,6 @@ func _test_failed_change(scene_reference: String, expected_result: SceneControll
 	_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "参照修正後に再試行できる")
 	_assert_current_scene(controller, SCENE_A_PATH)
 	_assert_idle(controller)
-	controller.queue_free()
-	await process_frame
-
-
-## 遷移中に専用ルートが使えなくなったとき、失敗を返して待機状態へ戻ることを確認する。[br]
-## [param free_root]: 専用ルートを解放する場合はtrue、ツリーから外すだけの場合はfalse
-func _test_unavailable_scenes_root(free_root: bool) -> void:
-	_helper.change_test_name("freed_scenes_root" if free_root else "detached_scenes_root")
-	var controller := _create_controller(SCENE_B_PATH)
-	var scenes_root := controller._main_scenes_root
-	var old_scene := scenes_root.get_child(0)
-	var success_events: Array[String] = []
-	controller.scene_change_started.connect(
-			func(_scene_path: String) -> void:
-				if free_root:
-					scenes_root.free()
-				else:
-					controller.remove_child(scenes_root),
-			CONNECT_ONE_SHOT,
-	)
-	controller.main_scene_added.connect(func(_path: String) -> void: success_events.append("added"))
-	controller.scene_change_completed.connect(func(_path: String) -> void: success_events.append("completed"))
-
-	var result := await controller.change_main_scene_async(SCENE_A_UID, TEST_EFFECT_PATH)
-	_helper.assert_equal(result, SceneController.ChangeResult.ADD_FAILED, "専用ルートが使えなければADD_FAILEDを返す")
-	_helper.assert_array(success_events, [], "差し替えに失敗したら成功通知を出さない")
-	_assert_idle(controller)
-
-	if not free_root:
-		_helper.assert_equal(scenes_root.get_children(), [old_scene], "外れたルートには旧シーンだけが残る")
-		controller.add_child(scenes_root)
-		result = await controller.change_main_scene_async(SCENE_A_UID, TEST_EFFECT_PATH)
-		_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "専用ルートを戻せば再試行できる")
-		_assert_current_scene(controller, SCENE_A_PATH)
-		_assert_idle(controller)
-
 	controller.queue_free()
 	await process_frame
 
@@ -275,7 +237,7 @@ func _create_controller(initial_scene_path := "") -> SceneController:
 	if not initial_scene_path.is_empty():
 		var initial_scene := load(initial_scene_path) as PackedScene
 		scenes_root.add_child(initial_scene.instantiate())
-	controller._main_scenes_root = scenes_root
+	controller._main_scene_parent = scenes_root
 	root.add_child(controller)
 	return controller
 
@@ -285,7 +247,7 @@ func _create_controller(initial_scene_path := "") -> SceneController:
 ## [param scene_path]: 期待するシーンの正規化パス
 func _assert_current_scene(controller: SceneController, scene_path: String) -> void:
 	_helper.assert_equal(controller.get_current_main_scene_path(), scene_path, "現在シーンの正規化したパスを公開する")
-	var scenes_root := controller._main_scenes_root
+	var scenes_root := controller._main_scene_parent
 	_helper.assert_equal(scenes_root.get_child_count(), 1, "専用ルートには現在のシーンだけを置く")
 	if scenes_root.get_child_count() == 1:
 		_helper.assert_equal(scenes_root.get_child(0).scene_file_path, scene_path, "期待するシーンを配置する")

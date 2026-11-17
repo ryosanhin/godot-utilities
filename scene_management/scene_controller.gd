@@ -24,18 +24,25 @@ const TransitionController := preload("res://transition_management/transition_co
 
 @export var _transition_controller: TransitionController
 ## 交換対象のシーンだけを子に配置する専用ルート。
-@export var _main_scenes_root: Node
+@export var _main_scene_parent: Node
 
 var is_changing := false
 
 
+## シーン切り替えに必要なノードの設定と配置を確認する。
+func _ready() -> void:
+	if _main_scene_parent == null or not _main_scene_parent.is_inside_tree():
+		push_error("SceneController の _main_scene_parent にシーンツリー内の専用ルートを設定してください。")
+		return
+	if _transition_controller == null or not _transition_controller.is_inside_tree():
+		push_error("SceneController の _transition_controller にシーンツリー内の演出コントローラーを設定してください。")
+		return
+
+
 func get_current_main_scene_path() -> String:
-	if not is_instance_valid(_main_scenes_root):
-		push_error("メインシーン専用ルートが存在しません。")
+	if _main_scene_parent.get_child_count() == 0:
 		return ""
-	if _main_scenes_root.get_child_count() == 0:
-		return ""
-	var current_main_scene := _main_scenes_root.get_child(0)
+	var current_main_scene := _main_scene_parent.get_child(0)
 	return current_main_scene.scene_file_path
 
 
@@ -43,10 +50,10 @@ func get_current_main_scene_path() -> String:
 ## [param scene_reference]: シーンのUIDまたはパス
 func is_loaded(scene_reference: String) -> bool:
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
-	if scene_path.is_empty() or not is_instance_valid(_main_scenes_root):
+	if scene_path.is_empty():
 		return false
 
-	for scene in _main_scenes_root.get_children():
+	for scene in _main_scene_parent.get_children():
 		if AsyncResourceLoadRequest.resolve_resource_path(scene.scene_file_path) == scene_path:
 			return true
 	return false
@@ -63,13 +70,10 @@ func change_main_scene_async(
 		return ChangeResult.BUSY
 
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
-	if scene_path.is_empty() or not is_instance_valid(_main_scenes_root):
+	if scene_path.is_empty():
 		return ChangeResult.INVALID_SCENE
 	if scene_path == get_current_main_scene_path():
 		return ChangeResult.ALREADY_CURRENT
-	if not is_instance_valid(_transition_controller):
-		return ChangeResult.TRANSITION_PREPARATION_FAILED
-
 	is_changing = true
 	if not await _transition_controller.prepare_async(transition_reference):
 		is_changing = false
@@ -128,31 +132,17 @@ func _instantiate_scene_async(scene_path: String) -> Node:
 	return next_scene
 
 
-## 旧シーンを専用ルートから外して解放し、新シーンを追加する。[br]
+## 新シーンを専用ルートに追加できた場合、旧シーンを外して解放する。[br]
 ## [param next_scene]: 切り替え先のノード
 func _try_replace_main_scene(next_scene: Node) -> bool:
-	var scenes_root := _main_scenes_root
-	if (
-			not is_instance_valid(scenes_root)
-			or not scenes_root.is_inside_tree()
-			or scenes_root.is_queued_for_deletion()
-	):
-		return false
-
-	var former_scenes := _main_scenes_root.get_children()
+	var scenes_root := _main_scene_parent
+	var former_scenes := scenes_root.get_children()
 
 	scenes_root.add_child(next_scene)
+	if not is_instance_valid(next_scene) or next_scene.get_parent() != scenes_root:
+		return false
 
-	# 正常に追加ができているか確認する。
-	var is_added := (
-			is_instance_valid(next_scene)
-			and next_scene.is_inside_tree()
-			and next_scene.get_parent() == scenes_root
-	)
-
-	if is_added:
-		for former_scene in former_scenes:
-			scenes_root.remove_child(former_scene)
-			former_scene.queue_free()
-
-	return is_added
+	for former_scene in former_scenes:
+		scenes_root.remove_child(former_scene)
+		former_scene.queue_free()
+	return true
