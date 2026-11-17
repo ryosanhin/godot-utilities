@@ -6,7 +6,7 @@
 
 1. `scene_management/`と`async_resource_load_request/`、`transition_management/`をプロジェクト直下へ配置します。
 2. `scene_controller.tscn`を、切り替え時にも残るシーンにインスタンス化します。子の`TransitionController`は付属シーンで設定済みです。
-3. 交換対象のシーンを子に持つNodeを用意し、エディターで`_main_scenes_root`へ設定します。コントローラーは交換対象の配下から外して配置します。
+3. 交換対象のシーンを子に持つNodeを用意し、エディターで`_main_scene_parent`へ設定します。コントローラーは交換対象の配下から外して配置します。
 4. 初期シーンがある場合は、起動前に専用ルートの子としてシーンをインスタンス化します。
 
 > **ノードの寿命と配置**
