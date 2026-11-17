@@ -130,7 +130,7 @@ func _test_load() -> void:
 			"存在しないパスも参照エラーとして返す",
 	)
 	_helper.assert_false(missing.is_successful(), "失敗結果を判別できる")
-	_helper.assert_null(missing.get_loaded_resource(), "失敗時はResourceを持たない")
+	_helper.assert_null(await missing.get_resource_async(), "存在しないパスではnullを返す")
 	_helper.assert_equal(
 			missing.resource_path,
 			MISSING_RESOURCE_PATH,
@@ -151,7 +151,6 @@ func _test_load() -> void:
 	var failed := AsyncResourceLoadRequest.new(MALFORMED_RESOURCE_PATH)
 	_helper.assert_null(await failed.get_resource_async(), "読み込み失敗時はnullを返す")
 	_helper.assert_equal(failed.get_error_code(), AsyncResourceLoadRequest.ErrorCode.LOAD_FAILED, "読み込み開始後の失敗をコードで返す")
-	_helper.assert_null(failed.get_loaded_resource(), "読み込み失敗時もResourceを持たない")
 	_helper.assert_equal(
 			ResourceLoader.load_threaded_get_status(MALFORMED_RESOURCE_PATH),
 			ResourceLoader.THREAD_LOAD_INVALID_RESOURCE,
@@ -214,8 +213,11 @@ func _test_release_owner_node() -> void:
 	request.completed.connect(
 			func() -> void:
 				var finished := request_ref.get_ref() as AsyncResourceLoadRequest
-				if finished != null and finished.get_loaded_resource() != null:
-					resource_refs.append(weakref(finished.get_loaded_resource())),
+				if finished == null:
+					return
+				var loaded_resource := await finished.get_resource_async()
+				if loaded_resource != null:
+					resource_refs.append(weakref(loaded_resource)),
 			CONNECT_ONE_SHOT,
 	)
 

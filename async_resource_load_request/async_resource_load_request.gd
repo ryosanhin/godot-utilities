@@ -91,11 +91,6 @@ func get_error_code() -> ErrorCode:
 	return _error_code
 
 
-## 読み込まれたリソースを取得する。
-func get_loaded_resource() -> Resource:
-	return _resource
-
-
 ## 読み込み結果を人間向けの説明文へ変換する。
 func format_error() -> String:
 	match _error_code:
