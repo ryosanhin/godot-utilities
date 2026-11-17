@@ -30,7 +30,7 @@ var is_changing := false
 
 
 func get_current_main_scene_path() -> String:
-	if not is_instance_valid(_main_scenes_root):
+	if _main_scenes_root == null:
 		push_error("メインシーン専用ルートが存在しません。")
 		return ""
 	if _main_scenes_root.get_child_count() == 0:
@@ -43,7 +43,7 @@ func get_current_main_scene_path() -> String:
 ## [param scene_reference]: シーンのUIDまたはパス
 func is_loaded(scene_reference: String) -> bool:
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
-	if scene_path.is_empty() or not is_instance_valid(_main_scenes_root):
+	if scene_path.is_empty() or _main_scenes_root == null:
 		return false
 
 	for scene in _main_scenes_root.get_children():
@@ -63,11 +63,11 @@ func change_main_scene_async(
 		return ChangeResult.BUSY
 
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
-	if scene_path.is_empty() or not is_instance_valid(_main_scenes_root):
+	if scene_path.is_empty() or _main_scenes_root == null or not _main_scenes_root.is_inside_tree():
 		return ChangeResult.INVALID_SCENE
 	if scene_path == get_current_main_scene_path():
 		return ChangeResult.ALREADY_CURRENT
-	if not is_instance_valid(_transition_controller):
+	if _transition_controller == null:
 		return ChangeResult.TRANSITION_PREPARATION_FAILED
 
 	is_changing = true
@@ -128,31 +128,17 @@ func _instantiate_scene_async(scene_path: String) -> Node:
 	return next_scene
 
 
-## 旧シーンを専用ルートから外して解放し、新シーンを追加する。[br]
+## 新シーンを専用ルートに追加できた場合、旧シーンを外して解放する。[br]
 ## [param next_scene]: 切り替え先のノード
 func _try_replace_main_scene(next_scene: Node) -> bool:
 	var scenes_root := _main_scenes_root
-	if (
-			not is_instance_valid(scenes_root)
-			or not scenes_root.is_inside_tree()
-			or scenes_root.is_queued_for_deletion()
-	):
-		return false
-
-	var former_scenes := _main_scenes_root.get_children()
+	var former_scenes := scenes_root.get_children()
 
 	scenes_root.add_child(next_scene)
+	if not is_instance_valid(next_scene) or next_scene.get_parent() != scenes_root:
+		return false
 
-	# 正常に追加ができているか確認する。
-	var is_added := (
-			is_instance_valid(next_scene)
-			and next_scene.is_inside_tree()
-			and next_scene.get_parent() == scenes_root
-	)
-
-	if is_added:
-		for former_scene in former_scenes:
-			scenes_root.remove_child(former_scene)
-			former_scene.queue_free()
-
-	return is_added
+	for former_scene in former_scenes:
+		scenes_root.remove_child(former_scene)
+		former_scene.queue_free()
+	return true

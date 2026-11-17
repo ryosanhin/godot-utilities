@@ -12,7 +12,7 @@ var _is_preparing := false
 ## 演出を非同期で読み込み、表示前に構成を検証する。[br]
 ## [param transition_reference]: 遷移エフェクトのシーンのUIDまたはパス
 func prepare_async(transition_reference: String) -> bool:
-	if _is_preparing or _effect != null or not is_instance_valid(_input_blocker):
+	if _is_preparing or _effect != null or _input_blocker == null:
 		return false
 
 	_is_preparing = true

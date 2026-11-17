@@ -29,8 +29,7 @@ func _run_tests() -> void:
 	await _test_failed_change("", SceneController.ChangeResult.INVALID_SCENE)
 	await _test_failed_change(MISSING_SCENE_PATH, SceneController.ChangeResult.LOAD_FAILED)
 	await _test_failed_change(NON_SCENE_PATH, SceneController.ChangeResult.LOAD_FAILED)
-	await _test_unavailable_scenes_root(false)
-	await _test_unavailable_scenes_root(true)
+	await _test_detached_scenes_root()
 	await _test_paused_circle_fade()
 	await _helper.finish(self, "scene_controller")
 
@@ -156,37 +155,27 @@ func _test_failed_change(scene_reference: String, expected_result: SceneControll
 	await process_frame
 
 
-## 遷移中に専用ルートが使えなくなったとき、失敗を返して待機状態へ戻ることを確認する。[br]
-## [param free_root]: 専用ルートを解放する場合はtrue、ツリーから外すだけの場合はfalse
-func _test_unavailable_scenes_root(free_root: bool) -> void:
-	_helper.change_test_name("freed_scenes_root" if free_root else "detached_scenes_root")
+## 専用ルートがツリー外にある場合、演出の開始前に失敗することを確認する。
+func _test_detached_scenes_root() -> void:
+	_helper.change_test_name("detached_scenes_root")
 	var controller := _create_controller(SCENE_B_PATH)
 	var scenes_root := controller._main_scenes_root
 	var old_scene := scenes_root.get_child(0)
-	var success_events: Array[String] = []
-	controller.scene_change_started.connect(
-			func(_scene_path: String) -> void:
-				if free_root:
-					scenes_root.free()
-				else:
-					controller.remove_child(scenes_root),
-			CONNECT_ONE_SHOT,
-	)
-	controller.main_scene_added.connect(func(_path: String) -> void: success_events.append("added"))
-	controller.scene_change_completed.connect(func(_path: String) -> void: success_events.append("completed"))
+	controller.remove_child(scenes_root)
+	var started_paths: Array[String] = []
+	controller.scene_change_started.connect(func(path: String) -> void: started_paths.append(path))
 
 	var result := await controller.change_main_scene_async(SCENE_A_UID, TEST_EFFECT_PATH)
-	_helper.assert_equal(result, SceneController.ChangeResult.ADD_FAILED, "専用ルートが使えなければADD_FAILEDを返す")
-	_helper.assert_array(success_events, [], "差し替えに失敗したら成功通知を出さない")
+	_helper.assert_equal(result, SceneController.ChangeResult.INVALID_SCENE, "専用ルートがツリー外ならINVALID_SCENEを返す")
+	_helper.assert_array(started_paths, [], "演出を開始しない")
+	_helper.assert_array(scenes_root.get_children(), [old_scene], "外れたルートには旧シーンだけが残る")
 	_assert_idle(controller)
 
-	if not free_root:
-		_helper.assert_equal(scenes_root.get_children(), [old_scene], "外れたルートには旧シーンだけが残る")
-		controller.add_child(scenes_root)
-		result = await controller.change_main_scene_async(SCENE_A_UID, TEST_EFFECT_PATH)
-		_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "専用ルートを戻せば再試行できる")
-		_assert_current_scene(controller, SCENE_A_PATH)
-		_assert_idle(controller)
+	controller.add_child(scenes_root)
+	result = await controller.change_main_scene_async(SCENE_A_UID, TEST_EFFECT_PATH)
+	_helper.assert_equal(result, SceneController.ChangeResult.SUCCESS, "専用ルートを戻せば再試行できる")
+	_assert_current_scene(controller, SCENE_A_PATH)
+	_assert_idle(controller)
 
 	controller.queue_free()
 	await process_frame

@@ -2,6 +2,9 @@
 
 演出ごとに独立したシーンを用意し、ルートの`Control`に`transition_effect.gd`を割り当てます。`TransitionController`はシーン切り替えごとに演出を非同期で読み込み、同じインスタンスで画面を覆ってから戻します。
 
+> **ノードの寿命と配置**
+> `TransitionController` を利用する間は、`@export` で指定した `_input_blocker` を同じ配置で維持してください。呼び出し前にコントローラーと入力遮断ノードをシーンツリーへ配置し、入力遮断ノードの取り外し・親の変更・解放・参照の差し替えは行わないでください。演出のルートは `TransitionController` が追加・解放します。演出に設定した `AnimationPlayer` は、その演出が使われている間、同じ配置で維持してください。
+
 ## AnimationPlayerで演出を作る
 
 1. 演出シーンのルートを全画面に配置します。配下に`AnimationPlayer`を追加し、ルートの`_animation_player`に設定します。
