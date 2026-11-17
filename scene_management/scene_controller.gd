@@ -29,10 +29,17 @@ const TransitionController := preload("res://transition_management/transition_co
 var is_changing := false
 
 
+## シーン切り替えに必要なノードの設定と配置を確認する。
+func _ready() -> void:
+	if _main_scenes_root == null or not _main_scenes_root.is_inside_tree():
+		push_error("SceneController の _main_scenes_root にシーンツリー内の専用ルートを設定してください。")
+		return
+	if _transition_controller == null or not _transition_controller.is_inside_tree():
+		push_error("SceneController の _transition_controller にシーンツリー内の演出コントローラーを設定してください。")
+		return
+
+
 func get_current_main_scene_path() -> String:
-	if _main_scenes_root == null:
-		push_error("メインシーン専用ルートが存在しません。")
-		return ""
 	if _main_scenes_root.get_child_count() == 0:
 		return ""
 	var current_main_scene := _main_scenes_root.get_child(0)
@@ -43,7 +50,7 @@ func get_current_main_scene_path() -> String:
 ## [param scene_reference]: シーンのUIDまたはパス
 func is_loaded(scene_reference: String) -> bool:
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
-	if scene_path.is_empty() or _main_scenes_root == null:
+	if scene_path.is_empty():
 		return false
 
 	for scene in _main_scenes_root.get_children():
@@ -63,13 +70,10 @@ func change_main_scene_async(
 		return ChangeResult.BUSY
 
 	var scene_path := AsyncResourceLoadRequest.resolve_resource_path(scene_reference)
-	if scene_path.is_empty() or _main_scenes_root == null or not _main_scenes_root.is_inside_tree():
+	if scene_path.is_empty():
 		return ChangeResult.INVALID_SCENE
 	if scene_path == get_current_main_scene_path():
 		return ChangeResult.ALREADY_CURRENT
-	if _transition_controller == null:
-		return ChangeResult.TRANSITION_PREPARATION_FAILED
-
 	is_changing = true
 	if not await _transition_controller.prepare_async(transition_reference):
 		is_changing = false
