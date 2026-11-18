@@ -5,6 +5,10 @@ var service_type: Script
 var arg_type: int
 
 
+## 宣言された引数の情報を保持する。[br]
+## [param init_arg_name]: 引数名[br]
+## [param init_service_type]: 注入に使うスクリプト型。未対応の場合はnull[br]
+## [param init_arg_type]: 引数のVariant型
 func _init(
 	init_arg_name: StringName,
 	init_service_type: Script,
@@ -15,6 +19,7 @@ func _init(
 	arg_type = init_arg_type
 
 
+## 引数名と型情報を確認するための文字列を返す。
 func _to_string() -> String:
 	return (
 			"name: %s, class_name: %s, type: %d (%s)"
