@@ -1,0 +1,40 @@
+name: CLI Test
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  cli_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Godot Action
+        uses: chickensoft-games/setup-godot@v2.4.3
+        with:
+          version: "4.7.1"
+          use-dotnet: false
+
+      - name: Show Godot version
+        run: godot --version
+
+      - name: Import project
+        run: godot --headless --path . --import
+
+      - name: Run AsyncResourceLoadRequest test
+        run: godot --headless --path . --script tests/async_resource_load_request/async_resource_load_request_test.gd
+
+      - name: Run DependencyInjector test
+        run: godot --headless --path . --script tests/dependency_injection/dependency_injector_test.gd
+
+      - name: Run SceneController test
+        run: godot --headless --path . --script tests/scene_management/scene_controller/scene_controller_test.gd
+
+      - name: Run TestHelper test
+        run: godot --headless --path . --script tests/supports/test_helper.gd
