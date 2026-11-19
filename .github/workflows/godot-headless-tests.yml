@@ -1,4 +1,4 @@
-name: CLI Test
+name: Godot Headless Tests
 on:
   workflow_dispatch:
   push:
