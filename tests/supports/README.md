@@ -60,4 +60,4 @@ godot --headless --path . --script tests/supports/test_helper/test_helper_test.g
 ## License
 
 This project is licensed under the MIT License.
-See [LICENSE](LICENSE) for details.
+See [LICENSE](../../LICENSE) for details.

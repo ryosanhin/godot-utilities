@@ -123,4 +123,4 @@ godot --headless --path . --script tests/dependency_injection/dependency_injecto
 ## License
 
 This project is licensed under the MIT License.
-See [LICENSE](LICENSE) for details.
+See [LICENSE](../LICENSE) for details.
