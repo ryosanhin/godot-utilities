@@ -63,3 +63,8 @@ func open_main_async(controller: SceneController) -> void:
 ## 演出の作成
 
 付属の円形フェードの調整や独自の演出の作成方法は[画面切り替え演出](../transition_management/README.md)を参照してください。
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](LICENSE) for details.

@@ -56,3 +56,8 @@ godot --headless --path . --script tests/supports/test_helper/test_helper_test.g
 ```
 
 意図的な失敗は検査対象のTestHelperへ記録し、別のTestHelperで合否を判定します。`finish()`の成功・失敗は`fixtures/finish.gd`を別プロセスで実行し、終了コード0／1、後続処理の実行、`SCRIPT ERROR`がないことを個別に確認します。
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](LICENSE) for details.

@@ -39,3 +39,8 @@ func play_transition_async(transition: TransitionController) -> void:
 ```
 
 `cover_async()`から`finish()`までは、`CanvasLayer`上の全画面`Control`がゲーム画面へのGUIマウス入力を受け止めます。キーボードや`_input()`で直接読む入力は利用側で制御してください。
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](LICENSE) for details.

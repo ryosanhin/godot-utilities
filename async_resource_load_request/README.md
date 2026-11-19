@@ -31,3 +31,8 @@ func load_scene_async() -> PackedScene:
 - 取得したリソースは、呼び出し側で必要な型にキャストします。読み込み失敗と型の不一致を区別する場合は、キャスト前の戻り値を確認します。
 
 他モジュールへの依存はありません。エディタープラグインの有効化は不要です。
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](LICENSE) for details.
