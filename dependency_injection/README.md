@@ -119,3 +119,8 @@ func inject_mock_clock(hud: BattleHud) -> bool:
 godot --headless --path . --import
 godot --headless --path . --script tests/dependency_injection/dependency_injector_test.gd
 ```
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](../LICENSE) for details.
