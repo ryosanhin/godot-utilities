@@ -37,4 +37,4 @@ jobs:
         run: godot --headless --path . --script tests/scene_management/scene_controller/scene_controller_test.gd
 
       - name: Run TestHelper test
-        run: godot --headless --path . --script tests/supports/test_helper.gd
+        run: godot --headless --path . --script tests/supports/test_helper/test_helper_test.gd
