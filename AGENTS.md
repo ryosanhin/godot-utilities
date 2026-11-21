@@ -1,4 +1,4 @@
-# <リポジトリ名>
+# my-godot-utils
 
 ## プロジェクト概要
 
@@ -18,6 +18,7 @@
 - `async_resource_load_request/README.md`：非同期リソース読み込みスクリプトに関する説明
 - `dependency_injection/README.md`：Godot向け簡易DIスクリプトに関する説明
 - `scene_management/README.md`：シーン切り替えスクリプトに関する説明
+- `tests/supports/README.md`：テスト実行補助スクリプトに関する説明
 - `transition_management/README.md`：画面切り替え演出スクリプトに関する説明
 
 設計資料と既存実装に相違がある場合は、両者を確認し、依頼内容に応じて対応する。判断できない重要な相違点は報告する。
