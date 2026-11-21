@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-<リポジトリ名>は、Godot v4.7とGDScriptで開発を行うGodot向け便利ツールである。
+my-godot-utilsは、Godot v4.7とGDScriptで開発を行うGodot向け便利ツールである。
 
 ## 開発の基本方針
 
